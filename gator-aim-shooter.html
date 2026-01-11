@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gator Aim Shooter — F/J Aim, Space Shoot</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐊</text></svg>">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+      background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 45%, #B6E3EE 100%);
+      overflow: hidden;
+      color: #1e2a14;
+    }
+
+    #app {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 18px 22px;
+      gap: 14px;
+    }
+
+    #hud {
+      width: min(980px, 96vw);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+    }
+
+    .pill {
+      background: rgba(255,255,255,0.92);
+      border: 2px solid rgba(0,0,0,0.15);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+    }
+
+    .meter {
+      width: 160px;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.08);
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.12);
+    }
+    .meter > div {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #FFD700, #FFB300);
+      border-radius: 999px;
+      transition: width 120ms linear;
+    }
+
+    #stage {
+      width: min(980px, 96vw);
+      aspect-ratio: 16 / 9;
+      background: rgba(255,255,255,0.25);
+      border-radius: 22px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      border: 4px solid rgba(255,255,255,0.55);
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(0,0,0,0.45);
+      color: white;
+    }
+
+    #overlay.hidden { display: none; }
+
+    .card {
+      width: min(720px, 92%);
+      background: rgba(255,255,255,0.96);
+      color: #173014;
+      border-radius: 22px;
+      padding: 22px 22px;
+      text-align: center;
+      box-shadow: 0 14px 44px rgba(0,0,0,0.25);
+      border: 3px solid rgba(0,0,0,0.12);
+    }
+
+    .card h1 {
+      font-size: 34px;
+      margin-bottom: 6px;
+      color: #2d5016;
+    }
+    .card p {
+      font-size: 18px;
+      line-height: 1.35;
+      margin: 10px 0;
+      color: #243b1d;
+    }
+
+    .big-keys {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 14px 0 10px;
+      user-select: none;
+    }
+
+    .key {
+      background: white;
+      border: 2px solid #2c2c2c;
+      border-radius: 14px;
+      padding: 12px 14px;
+      min-width: 130px;
+      text-align: center;
+      box-shadow: 0 5px 10px rgba(0,0,0,0.18);
+      transition: transform 0.08s, background 0.08s, border-color 0.08s, box-shadow 0.08s;
+      font-weight: 900;
+      color: #172012;
+    }
+    .key small {
+      display: block;
+      margin-top: 4px;
+      font-weight: 700;
+      opacity: 0.75;
+      font-size: 12px;
+    }
+    .key.space { min-width: 280px; }
+    .key.aiming {
+      background: #FFF4C2;
+      border-color: #B08200;
+      box-shadow: 0 8px 16px rgba(255, 180, 0, 0.35);
+      transform: translateY(-1px);
+    }
+    .key.pressed {
+      background: #C8E6C9;
+      transform: translateY(2px) scale(0.98);
+      border-color: #66BB6A;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-weight: 900;
+      font-size: 18px;
+      cursor: pointer;
+      background: #4CAF50;
+      color: white;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+      transition: transform 0.12s, background 0.12s;
+      font-family: inherit;
+    }
+    button:hover { background: #45a049; transform: translateY(-1px); }
+    button.secondary { background: #2d5016; }
+    button.secondary:hover { background: #244213; }
+
+    #bottom {
+      width: min(980px, 96vw);
+      display: flex;
+      justify-content: center;
+    }
+
+    #toast {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.92);
+      border: 2px solid rgba(0,0,0,0.15);
+      border-radius: 14px;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+      font-weight: 800;
+      color: #2d5016;
+      display: none;
+      z-index: 10;
+      pointer-events: none;
+      user-select: none;
+      max-width: 92%;
+      text-align: center;
+    }
+    #toast.show { display: block; }
+
+    .treat-stage {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 18px;
+      margin: 14px 0 8px;
+      min-height: 120px;
+      user-select: none;
+    }
+    .treat-stage .gator-eat {
+      font-size: 92px;
+      transform: scaleX(-1);
+      animation: gator-chomp 1.1s ease-in-out infinite;
+      filter: saturate(1.02);
+    }
+    .treat-stage .treat {
+      font-size: 62px;
+      animation: treat-to-mouth 1.1s ease-in-out infinite;
+      transform-origin: center;
+    }
+    .treat-stage .sparkle {
+      font-size: 28px;
+      opacity: 0.0;
+      animation: sparkle-pop 1.1s ease-in-out infinite;
+    }
+
+    @keyframes gator-chomp {
+      0%, 55% { transform: scaleX(-1) translateY(0px) scale(1); }
+      65% { transform: scaleX(-1) translateY(-2px) scale(1.06) rotate(2deg); }
+      78% { transform: scaleX(-1) translateY(1px) scale(0.98) rotate(-3deg); }
+      100% { transform: scaleX(-1) translateY(0px) scale(1); }
+    }
+
+    @keyframes treat-to-mouth {
+      0% { opacity: 0; transform: translateX(140px) translateY(-34px) scale(1); }
+      12% { opacity: 1; }
+      55% { opacity: 1; transform: translateX(26px) translateY(-10px) scale(1); }
+      72% { opacity: 1; transform: translateX(6px) translateY(-2px) scale(0.7); }
+      82% { opacity: 0; transform: translateX(0px) translateY(2px) scale(0.15); }
+      100% { opacity: 0; transform: translateX(0px) translateY(2px) scale(0.15); }
+    }
+
+    @keyframes sparkle-pop {
+      0%, 60% { opacity: 0; transform: translateY(0px) scale(0.6); }
+      70% { opacity: 0.9; transform: translateY(-10px) scale(1.1); }
+      85% { opacity: 0.0; transform: translateY(-16px) scale(1.2); }
+      100% { opacity: 0; transform: translateY(-16px) scale(1.2); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="hud">
+      <div class="pill"><span>🏁</span><span id="hud-level">Level: 1 / 12</span></div>
+      <div class="pill"><span>🐊</span><span id="hud-mode">Aim: Left</span></div>
+      <div class="pill"><span>🎯</span><span id="hud-score">Score: 0</span></div>
+      <div class="pill"><span>⚡</span><span id="hud-streak">Streak: 0</span></div>
+      <div class="pill"><span>❤️</span><span id="hud-lives">Lives: ❤❤❤</span></div>
+      <div class="pill">
+        <span>🍰</span>
+        <span id="hud-cake">Cake: 0%</span>
+        <span class="meter" aria-label="Cake meter"><div id="cake-bar"></div></span>
+      </div>
+    </div>
+
+    <div id="stage">
+      <div id="toast"></div>
+      <canvas id="game" width="1280" height="720"></canvas>
+      <div id="overlay">
+        <div class="card">
+          <h1>🐊 Swamp Cake Defense 🍰</h1>
+          <p>
+            Keep your <b>thumb on Space</b> and your <b>index fingers on F and J</b>.
+            Enemies rush in from the sides — don’t look down!
+          </p>
+          <div class="big-keys" aria-label="Controls">
+            <div class="key" id="key-f">F<small>aim left (flies 🪰)</small></div>
+            <div class="key space" id="key-space">SPACE<small>shoot water 💦</small></div>
+            <div class="key" id="key-j">J<small>aim right (jaguars 🐆)</small></div>
+          </div>
+          <p>
+            Beat <b>12 levels</b>. Each level ends when you fill the <b>cake meter</b>.
+            If enemies reach you, you lose hearts.
+          </p>
+          <div class="btn-row">
+            <button id="start-btn">Start</button>
+            <button class="secondary" id="practice-btn" title="Start slower">Practice Mode</button>
+          </div>
+          <p style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
+            Tip: Press <b>F</b>/<b>J</b> to aim, <b>Space</b> to shoot. After levels 4, 8, and 12 your gator gets a treat!
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div id="bottom">
+      <div class="big-keys" style="margin: 0;">
+        <div class="key" id="key-f-2">F<small>flies 🪰</small></div>
+        <div class="key space" id="key-space-2">SPACE<small>shoot 💦</small></div>
+        <div class="key" id="key-j-2">J<small>jaguars 🐆</small></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const overlay = document.getElementById('overlay');
+    const toast = document.getElementById('toast');
+    const startBtn = document.getElementById('start-btn');
+    const practiceBtn = document.getElementById('practice-btn');
+
+    const hudLevel = document.getElementById('hud-level');
+    const hudMode = document.getElementById('hud-mode');
+    const hudScore = document.getElementById('hud-score');
+    const hudStreak = document.getElementById('hud-streak');
+    const hudLives = document.getElementById('hud-lives');
+    const hudCake = document.getElementById('hud-cake');
+    const cakeBar = document.getElementById('cake-bar');
+
+    const keyEls = {
+      f: [document.getElementById('key-f'), document.getElementById('key-f-2')],
+      j: [document.getElementById('key-j'), document.getElementById('key-j-2')],
+      space: [document.getElementById('key-space'), document.getElementById('key-space-2')],
+    };
+
+    function setKeyClass(which, className, on) {
+      const els = keyEls[which] || [];
+      for (const el of els) {
+        if (!el) continue;
+        el.classList.toggle(className, !!on);
+      }
+    }
+
+    function showToast(message, ms = 900) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      window.clearTimeout(showToast._t);
+      showToast._t = window.setTimeout(() => toast.classList.remove('show'), ms);
+    }
+
+    const TOTAL_LEVELS = 12;
+    const LEVELS = [
+      // 12 levels, gently ramping difficulty. (Intervals are seconds, speeds are px/s.)
+      { name: 'Warm-up', minInterval: 1.05, maxInterval: 1.55, baseSpeed: 130, speedRamp: 120, cakePerHit: 12, cakeStreakBonus: 0.45 },
+      { name: 'Steady',  minInterval: 0.95, maxInterval: 1.40, baseSpeed: 140, speedRamp: 135, cakePerHit: 12, cakeStreakBonus: 0.42 },
+      { name: 'Focus',   minInterval: 0.85, maxInterval: 1.25, baseSpeed: 150, speedRamp: 155, cakePerHit: 11, cakeStreakBonus: 0.40 },
+      { name: 'Quick Eyes', minInterval: 0.78, maxInterval: 1.15, baseSpeed: 160, speedRamp: 170, cakePerHit: 11, cakeStreakBonus: 0.38 },
+
+      { name: 'F/J Switch', minInterval: 0.70, maxInterval: 1.05, baseSpeed: 168, speedRamp: 185, cakePerHit: 10, cakeStreakBonus: 0.36 },
+      { name: 'Faster Swarm', minInterval: 0.62, maxInterval: 0.98, baseSpeed: 175, speedRamp: 205, cakePerHit: 10, cakeStreakBonus: 0.34 },
+      { name: 'No Peeking', minInterval: 0.56, maxInterval: 0.92, baseSpeed: 182, speedRamp: 225, cakePerHit: 9, cakeStreakBonus: 0.32 },
+      { name: 'Rapid Aim', minInterval: 0.50, maxInterval: 0.86, baseSpeed: 188, speedRamp: 250, cakePerHit: 9, cakeStreakBonus: 0.30 },
+
+      { name: 'Hard Mode', minInterval: 0.46, maxInterval: 0.82, baseSpeed: 194, speedRamp: 270, cakePerHit: 8, cakeStreakBonus: 0.28 },
+      { name: 'Swamp Rush', minInterval: 0.42, maxInterval: 0.78, baseSpeed: 200, speedRamp: 290, cakePerHit: 8, cakeStreakBonus: 0.26 },
+      { name: 'Lightning', minInterval: 0.38, maxInterval: 0.72, baseSpeed: 208, speedRamp: 315, cakePerHit: 7, cakeStreakBonus: 0.24 },
+      { name: 'Final Cake', minInterval: 0.34, maxInterval: 0.66, baseSpeed: 216, speedRamp: 340, cakePerHit: 7, cakeStreakBonus: 0.22 },
+    ];
+
+    const TREAT_BY_SET = ['🍪', '🍩', '🧁'];
+
+    const state = {
+      running: false,
+      practice: false,
+      aimDir: -1, // -1 left, +1 right
+      level: 1,
+      score: 0,
+      streak: 0,
+      lives: 3,
+      cake: 0, // 0..100
+      elapsed: 0, // total elapsed (for subtle background motion)
+      levelElapsed: 0,
+      spawnT: 0,
+      shotCooldown: 0,
+      missedShots: 0,
+      win: false,
+      lose: false,
+      lastHitAt: 0,
+    };
+
+    const enemies = [];
+    const shots = [];
+    const particles = [];
+
+    function resetGame({ practice = false } = {}) {
+      state.practice = practice;
+      state.score = 0;
+      state.elapsed = 0;
+      state.level = 1;
+      state.win = false;
+      state.lose = false;
+      startLevel(1);
+    }
+
+    function startLevel(levelNumber) {
+      state.level = Math.max(1, Math.min(TOTAL_LEVELS, levelNumber));
+      state.running = true;
+      state.aimDir = -1;
+      state.streak = 0;
+      state.lives = 3;
+      state.cake = 0;
+      state.levelElapsed = 0;
+      state.spawnT = 0;
+      state.shotCooldown = 0;
+      state.missedShots = 0;
+      state.lastHitAt = 0;
+
+      enemies.length = 0;
+      shots.length = 0;
+      particles.length = 0;
+
+      overlay.classList.add('hidden');
+      updateHud();
+
+      const cfg = LEVELS[state.level - 1];
+      showToast(`Level ${state.level}/${TOTAL_LEVELS}: ${cfg.name}`, 1100);
+    }
+
+    function updateHud() {
+      hudLevel.textContent = `Level: ${state.level} / ${TOTAL_LEVELS}`;
+      hudMode.textContent = `Aim: ${state.aimDir < 0 ? 'Left' : 'Right'}`;
+      hudScore.textContent = `Score: ${state.score}`;
+      hudStreak.textContent = `Streak: ${state.streak}`;
+      hudLives.textContent = `Lives: ${'❤'.repeat(Math.max(0, state.lives))}${'♡'.repeat(Math.max(0, 3 - state.lives))}`;
+      const cakePct = Math.max(0, Math.min(100, state.cake));
+      hudCake.textContent = `Cake: ${cakePct.toFixed(0)}%`;
+      cakeBar.style.width = `${cakePct}%`;
+
+      setKeyClass('f', 'aiming', state.aimDir < 0);
+      setKeyClass('j', 'aiming', state.aimDir > 0);
+    }
+
+    function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+    function rand(a, b) { return a + Math.random() * (b - a); }
+
+    function resizeCanvasToDisplaySize() {
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      const rect = canvas.getBoundingClientRect();
+      const w = Math.round(rect.width * dpr);
+      const h = Math.round(rect.height * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+    }
+
+    function spawnEnemy() {
+      const w = canvas.width;
+      const h = canvas.height;
+      const groundY = h * 0.84;
+
+      const side = Math.random() < 0.5 ? 'left' : 'right';
+      const x = side === 'left' ? -40 : (w + 40);
+      const y = rand(h * 0.18, groundY - h * 0.18);
+
+      const cfg = LEVELS[state.level - 1];
+      const rampSeconds = state.practice ? 26 : 20;
+      const difficulty = clamp01(state.levelElapsed / rampSeconds);
+      const practiceMult = state.practice ? 0.86 : 1.0;
+      const speed = (cfg.baseSpeed + difficulty * cfg.speedRamp + Math.min(160, state.streak * 2.2)) * practiceMult;
+      const emoji = side === 'left' ? '🪰' : '🐆';
+      const r = side === 'left' ? 18 : 22;
+
+      enemies.push({
+        side,
+        emoji,
+        x,
+        y,
+        r,
+        speed,
+        wobble: rand(0, Math.PI * 2),
+      });
+    }
+
+    function shoot() {
+      if (!state.running || state.win || state.lose) return;
+      if (state.shotCooldown > 0) return;
+
+      state.shotCooldown = 0.145; // seconds
+      setKeyClass('space', 'pressed', true);
+      window.setTimeout(() => setKeyClass('space', 'pressed', false), 90);
+
+      const w = canvas.width;
+      const h = canvas.height;
+      const gatorX = w * 0.5;
+      const gatorY = h * 0.86;
+
+      const dirX = state.aimDir * 0.62;
+      const dirY = -1.0;
+      const len = Math.hypot(dirX, dirY) || 1;
+      const nx = dirX / len;
+      const ny = dirY / len;
+
+      const speed = state.practice ? 940 : 1020;
+      shots.push({
+        x: gatorX + state.aimDir * 18,
+        y: gatorY - 34,
+        vx: nx * speed,
+        vy: ny * speed,
+        r: 7,
+        life: 1.2, // seconds
+      });
+    }
+
+    function addSplash(x, y, n = 10) {
+      for (let i = 0; i < n; i++) {
+        particles.push({
+          x, y,
+          vx: rand(-220, 220),
+          vy: rand(-220, 220),
+          r: rand(2, 5),
+          a: 1,
+          life: rand(0.35, 0.65),
+          t: 0,
+        });
+      }
+    }
+
+    function endGame(win) {
+      state.running = false;
+      state.win = !!win;
+      state.lose = !win;
+
+      const title = win ? 'Cake secured! 🍰' : 'Swamp trouble! 💥';
+      const msg = win
+        ? `Your gator defended the swamp and earned the cake.\nFinal score: ${state.score}`
+        : `Enemies reached you.\nFinal score: ${state.score}`;
+
+      overlay.innerHTML = `
+        <div class="card">
+          <h1>${title}</h1>
+          <p style="white-space: pre-line">${msg}</p>
+          <div class="big-keys" aria-label="Controls">
+            <div class="key">F<small>aim left (🪰)</small></div>
+            <div class="key space">SPACE<small>shoot (💦)</small></div>
+            <div class="key">J<small>aim right (🐆)</small></div>
+          </div>
+          <div class="btn-row">
+            <button id="restart-btn">Restart</button>
+            <button class="secondary" id="restart-practice-btn">Practice Mode</button>
+          </div>
+          <p style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
+            Keep thumbs on Space and index fingers on F/J — speed rewards staying in position.
+          </p>
+        </div>
+      `;
+      overlay.classList.remove('hidden');
+
+      const restart = overlay.querySelector('#restart-btn');
+      const restartPractice = overlay.querySelector('#restart-practice-btn');
+      if (restart) restart.addEventListener('click', () => resetGame({ practice: false }));
+      if (restartPractice) restartPractice.addEventListener('click', () => resetGame({ practice: true }));
+    }
+
+    function showSetVictory({ treatEmoji, title, message, nextLabel, onNext }) {
+      state.running = false;
+      overlay.innerHTML = `
+        <div class="card">
+          <h1>${title}</h1>
+          <p style="white-space: pre-line">${message}</p>
+          <div class="treat-stage" aria-label="Gator eating treat animation">
+            <div class="sparkle">✨</div>
+            <div class="gator-eat">🐊</div>
+            <div class="treat">${treatEmoji}</div>
+            <div class="sparkle">✨</div>
+          </div>
+          <div class="big-keys" aria-label="Controls">
+            <div class="key">F<small>aim left (🪰)</small></div>
+            <div class="key space">SPACE<small>shoot (💦)</small></div>
+            <div class="key">J<small>aim right (🐆)</small></div>
+          </div>
+          <div class="btn-row">
+            <button id="next-btn">${nextLabel}</button>
+            <button class="secondary" id="restart-btn">Restart</button>
+          </div>
+          <p style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
+            Keep thumbs on Space and index fingers on F/J — speed rewards staying in position.
+          </p>
+        </div>
+      `;
+      overlay.classList.remove('hidden');
+
+      const nextBtn = overlay.querySelector('#next-btn');
+      const restartBtn = overlay.querySelector('#restart-btn');
+      if (nextBtn) nextBtn.addEventListener('click', onNext);
+      if (restartBtn) restartBtn.addEventListener('click', () => resetGame({ practice: state.practice }));
+    }
+
+    function completeLevel() {
+      const levelJustBeat = state.level;
+      const isSetEnd = levelJustBeat % 4 === 0;
+      const isFinal = levelJustBeat === TOTAL_LEVELS;
+
+      // Quick flow for non-set levels: short toast + auto-advance.
+      if (!isSetEnd) {
+        state.running = false;
+        overlay.classList.add('hidden');
+        showToast(`Level ${levelJustBeat} complete!`, 800);
+        window.setTimeout(() => startLevel(levelJustBeat + 1), 900);
+        return;
+      }
+
+      // Set victory screens at levels 4, 8, 12.
+      const setIndex = Math.floor((levelJustBeat - 1) / 4); // 0..2
+      const treat = TREAT_BY_SET[setIndex] || '🍪';
+
+      if (isFinal) {
+        showSetVictory({
+          treatEmoji: treat,
+          title: 'All 12 levels complete! 🍰',
+          message: `Your gator earned the cake — and a final treat!\nFinal score: ${state.score}`,
+          nextLabel: 'Play Again',
+          onNext: () => resetGame({ practice: state.practice }),
+        });
+        return;
+      }
+
+      const nextLevel = levelJustBeat + 1;
+      showSetVictory({
+        treatEmoji: treat,
+        title: `Set complete! Level ${levelJustBeat} cleared!`,
+        message: `Treat time!\nNext up: Level ${nextLevel}/${TOTAL_LEVELS}.`,
+        nextLabel: `Start Level ${nextLevel}`,
+        onNext: () => startLevel(nextLevel),
+      });
+    }
+
+    function tick(dt) {
+      resizeCanvasToDisplaySize();
+      const w = canvas.width;
+      const h = canvas.height;
+
+      state.elapsed += dt;
+      state.levelElapsed += dt;
+      state.spawnT -= dt;
+      state.shotCooldown = Math.max(0, state.shotCooldown - dt);
+
+      // Spawn rate ramps up over time and streak.
+      const cfg = LEVELS[state.level - 1];
+      const rampSeconds = state.practice ? 26 : 20;
+      const difficulty = clamp01(state.levelElapsed / rampSeconds);
+      const practiceIntervalMult = state.practice ? 1.18 : 1.0;
+      const minInterval = cfg.minInterval * practiceIntervalMult;
+      const maxInterval = cfg.maxInterval * practiceIntervalMult;
+      const streakBoost = Math.min(0.18, state.streak * 0.004);
+      const spawnInterval = (maxInterval - (maxInterval - minInterval) * difficulty) * (1 - streakBoost);
+
+      if (state.spawnT <= 0) {
+        spawnEnemy();
+        state.spawnT = spawnInterval * rand(0.55, 0.95);
+      }
+
+      const gatorX = w * 0.5;
+      const gatorY = h * 0.86;
+
+      // Update enemies
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        e.wobble += dt * (e.side === 'left' ? 4.2 : 2.6);
+        const wobbleY = Math.sin(e.wobble) * (e.side === 'left' ? 16 : 10);
+
+        const tx = gatorX;
+        const ty = gatorY - 10 + wobbleY;
+        const dx = tx - e.x;
+        const dy = ty - e.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = dx / len;
+        const ny = dy / len;
+
+        e.x += nx * e.speed * dt;
+        e.y += ny * e.speed * dt;
+
+        // Reached gator
+        if (Math.hypot(e.x - gatorX, e.y - gatorY) < (e.r + 26)) {
+          enemies.splice(i, 1);
+          addSplash(gatorX + rand(-18, 18), gatorY - rand(10, 26), 18);
+          state.lives -= 1;
+          state.streak = 0;
+          state.missedShots = 0;
+          state.lastHitAt = performance.now();
+          showToast('Ouch! Keep your aim ready (F/J)!', 850);
+          if (state.lives <= 0) {
+            updateHud();
+            endGame(false);
+            return;
+          }
+        }
+      }
+
+      // Update shots
+      for (let i = shots.length - 1; i >= 0; i--) {
+        const s = shots[i];
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+        s.life -= dt;
+        if (s.life <= 0 || s.x < -80 || s.x > w + 80 || s.y < -80 || s.y > h + 80) {
+          shots.splice(i, 1);
+          state.missedShots += 1;
+          if (state.missedShots >= 2 && state.streak > 0) {
+            state.streak = 0;
+            showToast('Missed — keep eyes up and aim (F/J)!', 720);
+          }
+          continue;
+        }
+      }
+
+      // Collisions
+      for (let si = shots.length - 1; si >= 0; si--) {
+        const s = shots[si];
+        let hit = false;
+        for (let ei = enemies.length - 1; ei >= 0; ei--) {
+          const e = enemies[ei];
+          if (Math.hypot(s.x - e.x, s.y - e.y) <= (s.r + e.r)) {
+            enemies.splice(ei, 1);
+            shots.splice(si, 1);
+            addSplash(e.x, e.y, e.side === 'left' ? 10 : 14);
+            state.missedShots = 0;
+            state.streak += 1;
+            const streakBonus = Math.min(40, state.streak * 2);
+            state.score += 10 + streakBonus;
+            const cfg = LEVELS[state.level - 1];
+            const cakeGain = cfg.cakePerHit + Math.min(10, state.streak) * cfg.cakeStreakBonus;
+            state.cake = Math.min(100, state.cake + cakeGain);
+            hit = true;
+            break;
+          }
+        }
+        if (hit) continue;
+      }
+
+      if (state.cake >= 100 && !state.win && !state.lose) {
+        updateHud();
+        completeLevel();
+        return;
+      }
+
+      // Update particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.t += dt;
+        p.vy += 560 * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        const t = clamp01(p.t / p.life);
+        p.a = 1 - t;
+        if (p.t >= p.life) particles.splice(i, 1);
+      }
+
+      updateHud();
+      draw();
+    }
+
+    function draw() {
+      const w = canvas.width;
+      const h = canvas.height;
+      const groundY = h * 0.84;
+
+      // Sky
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, '#87CEEB');
+      sky.addColorStop(0.5, '#98D8E8');
+      sky.addColorStop(1, '#BEEBF0');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
+
+      // Subtle clouds
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 7; i++) {
+        const x = (i * 0.16 + (state.elapsed * 0.01)) % 1;
+        const cx = x * w;
+        const cy = h * (0.12 + (i % 3) * 0.06);
+        const r = h * (0.06 + (i % 4) * 0.01);
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r * 1.2, r * 0.7, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx + r * 0.7, cy + r * 0.05, r * 1.0, r * 0.6, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx - r * 0.7, cy + r * 0.1, r * 0.9, r * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Cake at top center
+      const cakeX = w * 0.5;
+      const cakeY = h * 0.10;
+      ctx.font = `${Math.round(h * 0.07)}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🍰', cakeX, cakeY);
+      ctx.globalAlpha = 0.85;
+      ctx.font = `${Math.round(h * 0.035)}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      ctx.fillText('✨', cakeX - h * 0.06, cakeY + h * 0.02);
+      ctx.fillText('✨', cakeX + h * 0.06, cakeY + h * 0.02);
+      ctx.globalAlpha = 1;
+
+      // Swamp ground + water
+      const mud = ctx.createLinearGradient(0, groundY - h * 0.06, 0, h);
+      mud.addColorStop(0, '#7A6A53');
+      mud.addColorStop(0.35, '#6B5D4F');
+      mud.addColorStop(1, '#4E4338');
+      ctx.fillStyle = mud;
+      ctx.fillRect(0, groundY - h * 0.06, w, h);
+
+      const waterY = groundY + h * 0.02;
+      const water = ctx.createLinearGradient(0, waterY, 0, h);
+      water.addColorStop(0, '#4a7c59');
+      water.addColorStop(1, '#2d5016');
+      ctx.fillStyle = water;
+      ctx.fillRect(0, waterY, w, h - waterY);
+
+      // Ripples
+      ctx.globalAlpha = 0.12;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1, h * 0.003);
+      const rippleOffset = (state.elapsed * 70) % (w * 0.25);
+      for (let y = waterY + h * 0.02; y < h; y += h * 0.035) {
+        ctx.beginPath();
+        for (let x = -w * 0.1; x <= w * 1.1; x += w * 0.08) {
+          const yy = y + Math.sin((x + rippleOffset) / (w * 0.09)) * (h * 0.006);
+          if (x === -w * 0.1) ctx.moveTo(x, yy);
+          else ctx.lineTo(x, yy);
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // Aim indicator
+      const gatorX = w * 0.5;
+      const gatorY = h * 0.86;
+      const aimX = gatorX + state.aimDir * (w * 0.22);
+      const aimY = gatorY - h * 0.28;
+
+      ctx.strokeStyle = state.aimDir < 0 ? 'rgba(255, 180, 0, 0.9)' : 'rgba(255, 180, 0, 0.9)';
+      ctx.lineWidth = Math.max(3, h * 0.008);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(gatorX, gatorY - h * 0.02);
+      ctx.lineTo(aimX, aimY);
+      ctx.stroke();
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.95)';
+      ctx.beginPath();
+      ctx.arc(aimX, aimY, Math.max(6, h * 0.012), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // Enemies
+      for (const e of enemies) {
+        const fontSize = e.side === 'left' ? Math.round(h * 0.055) : Math.round(h * 0.06);
+        ctx.font = `${fontSize}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+        ctx.fillText(e.emoji, e.x, e.y);
+      }
+
+      // Shots
+      for (const s of shots) {
+        ctx.fillStyle = 'rgba(140, 220, 255, 0.98)';
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath();
+        ctx.arc(s.x - s.r * 0.35, s.y - s.r * 0.35, s.r * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // Particles
+      for (const p of particles) {
+        ctx.globalAlpha = p.a;
+        ctx.fillStyle = 'rgba(160, 230, 255, 0.95)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Gator (bottom center)
+      const gatorSize = Math.round(h * 0.09);
+      ctx.font = `${gatorSize}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      ctx.fillText('🐊', gatorX, gatorY);
+
+      // Hurt flash
+      const sinceHit = performance.now() - state.lastHitAt;
+      if (sinceHit >= 0 && sinceHit < 240) {
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = '#ff1744';
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    let last = performance.now();
+    function loop(now) {
+      const dt = Math.min(0.035, (now - last) / 1000);
+      last = now;
+
+      if (state.running && !state.win && !state.lose) {
+        tick(dt);
+      } else {
+        // Still render a calm scene behind overlay.
+        resizeCanvasToDisplaySize();
+        draw();
+      }
+      requestAnimationFrame(loop);
+    }
+
+    function onKeyDown(e) {
+      const k = e.key.toLowerCase();
+      if (k !== 'f' && k !== 'j' && k !== ' ') {
+        if (state.running) {
+          state.streak = 0;
+          state.missedShots = 0;
+          showToast('Only F, J, and Space for this game!', 850);
+          updateHud();
+        }
+        return;
+      }
+
+      // Prevent page scrolling on space
+      if (k === ' ') e.preventDefault();
+
+      if (k === 'f') {
+        state.aimDir = -1;
+        setKeyClass('f', 'pressed', true);
+        window.setTimeout(() => setKeyClass('f', 'pressed', false), 90);
+        updateHud();
+        return;
+      }
+      if (k === 'j') {
+        state.aimDir = 1;
+        setKeyClass('j', 'pressed', true);
+        window.setTimeout(() => setKeyClass('j', 'pressed', false), 90);
+        updateHud();
+        return;
+      }
+      if (k === ' ') {
+        if (!state.running) return;
+        shoot();
+        return;
+      }
+    }
+
+    startBtn.addEventListener('click', () => resetGame({ practice: false }));
+    practiceBtn.addEventListener('click', () => resetGame({ practice: true }));
+    overlay.addEventListener('click', (e) => {
+      // Clicking the dark backdrop shouldn't restart by accident.
+      if (e.target === overlay) {
+        const hasStart = !!overlay.querySelector('#start-btn');
+        showToast(hasStart ? 'Click Start to begin.' : 'Use the buttons to continue.', 700);
+      }
+    });
+
+    window.addEventListener('keydown', onKeyDown, { passive: false });
+    window.addEventListener('blur', () => {
+      // Gentle stop when tab loses focus
+      if (state.running && !state.win && !state.lose) {
+        showToast('Back to the game — eyes up!', 800);
+      }
+    });
+
+    updateHud();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
+
