@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gator Aim Shooter — F/J Aim, Space Shoot</title>
+  <title>Gator Water Flinger — F/J Aim, Space Fling</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐊</text></svg>">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -270,9 +270,9 @@
       <div class="pill"><span>⚡</span><span id="hud-streak">Streak: 0</span></div>
       <div class="pill"><span>❤️</span><span id="hud-lives">Lives: ❤❤❤</span></div>
       <div class="pill">
-        <span>🍰</span>
-        <span id="hud-cake">Cake: 0%</span>
-        <span class="meter" aria-label="Cake meter"><div id="cake-bar"></div></span>
+        <span id="hud-treat-icon">🍬</span>
+        <span id="hud-treat">Treat: 0%</span>
+        <span class="meter" aria-label="Treat meter"><div id="treat-bar"></div></span>
       </div>
     </div>
 
@@ -281,18 +281,18 @@
       <canvas id="game" width="1280" height="720"></canvas>
       <div id="overlay">
         <div class="card">
-          <h1>🐊 Swamp Cake Defense 🍰</h1>
+          <h1>🐊 Swamp Treat Defense 🍬</h1>
           <p>
             Keep your <b>thumb on Space</b> and your <b>index fingers on F and J</b>.
             Enemies rush in from the sides — don’t look down!
           </p>
           <div class="big-keys" aria-label="Controls">
             <div class="key" id="key-f">F<small>aim left (flies 🪰)</small></div>
-            <div class="key space" id="key-space">SPACE<small>shoot water 💦</small></div>
+            <div class="key space" id="key-space">SPACE<small>fling water 💦</small></div>
             <div class="key" id="key-j">J<small>aim right (jaguars 🐆)</small></div>
           </div>
           <p>
-            Beat <b>12 levels</b>. Each level ends when you fill the <b>cake meter</b>.
+            Beat <b>100 levels</b> across <b>25 treat quests</b>. Fill the meter to earn each treat!
             If enemies reach you, you lose hearts.
           </p>
           <div class="btn-row">
@@ -300,7 +300,7 @@
             <button class="secondary" id="practice-btn" title="Start slower">Practice Mode</button>
           </div>
           <p style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
-            Tip: Press <b>F</b>/<b>J</b> to aim, <b>Space</b> to shoot. After levels 4, 8, and 12 your gator gets a treat!
+            Tip: Press <b>F</b>/<b>J</b> to aim, <b>Space</b> to fling. Every 4 levels your gator earns a bigger treat!
           </p>
         </div>
       </div>
@@ -309,7 +309,7 @@
     <div id="bottom">
       <div class="big-keys" style="margin: 0;">
         <div class="key" id="key-f-2">F<small>flies 🪰</small></div>
-        <div class="key space" id="key-space-2">SPACE<small>shoot 💦</small></div>
+        <div class="key space" id="key-space-2">SPACE<small>fling 💦</small></div>
         <div class="key" id="key-j-2">J<small>jaguars 🐆</small></div>
       </div>
     </div>
@@ -329,8 +329,9 @@
     const hudScore = document.getElementById('hud-score');
     const hudStreak = document.getElementById('hud-streak');
     const hudLives = document.getElementById('hud-lives');
-    const hudCake = document.getElementById('hud-cake');
-    const cakeBar = document.getElementById('cake-bar');
+    const hudTreat = document.getElementById('hud-treat');
+    const hudTreatIcon = document.getElementById('hud-treat-icon');
+    const treatBar = document.getElementById('treat-bar');
 
     const keyEls = {
       f: [document.getElementById('key-f'), document.getElementById('key-f-2')],
@@ -353,26 +354,90 @@
       showToast._t = window.setTimeout(() => toast.classList.remove('show'), ms);
     }
 
-    const TOTAL_LEVELS = 12;
-    const LEVELS = [
-      // 12 levels, gently ramping difficulty. (Intervals are seconds, speeds are px/s.)
-      { name: 'Warm-up', minInterval: 1.05, maxInterval: 1.55, baseSpeed: 130, speedRamp: 120, cakePerHit: 12, cakeStreakBonus: 0.45 },
-      { name: 'Steady',  minInterval: 0.95, maxInterval: 1.40, baseSpeed: 140, speedRamp: 135, cakePerHit: 12, cakeStreakBonus: 0.42 },
-      { name: 'Focus',   minInterval: 0.85, maxInterval: 1.25, baseSpeed: 150, speedRamp: 155, cakePerHit: 11, cakeStreakBonus: 0.40 },
-      { name: 'Quick Eyes', minInterval: 0.78, maxInterval: 1.15, baseSpeed: 160, speedRamp: 170, cakePerHit: 11, cakeStreakBonus: 0.38 },
+    const TOTAL_LEVELS = 100;
 
-      { name: 'F/J Switch', minInterval: 0.70, maxInterval: 1.05, baseSpeed: 168, speedRamp: 185, cakePerHit: 10, cakeStreakBonus: 0.36 },
-      { name: 'Faster Swarm', minInterval: 0.62, maxInterval: 0.98, baseSpeed: 175, speedRamp: 205, cakePerHit: 10, cakeStreakBonus: 0.34 },
-      { name: 'No Peeking', minInterval: 0.56, maxInterval: 0.92, baseSpeed: 182, speedRamp: 225, cakePerHit: 9, cakeStreakBonus: 0.32 },
-      { name: 'Rapid Aim', minInterval: 0.50, maxInterval: 0.86, baseSpeed: 188, speedRamp: 250, cakePerHit: 9, cakeStreakBonus: 0.30 },
-
-      { name: 'Hard Mode', minInterval: 0.46, maxInterval: 0.82, baseSpeed: 194, speedRamp: 270, cakePerHit: 8, cakeStreakBonus: 0.28 },
-      { name: 'Swamp Rush', minInterval: 0.42, maxInterval: 0.78, baseSpeed: 200, speedRamp: 290, cakePerHit: 8, cakeStreakBonus: 0.26 },
-      { name: 'Lightning', minInterval: 0.38, maxInterval: 0.72, baseSpeed: 208, speedRamp: 315, cakePerHit: 7, cakeStreakBonus: 0.24 },
-      { name: 'Final Cake', minInterval: 0.34, maxInterval: 0.66, baseSpeed: 216, speedRamp: 340, cakePerHit: 7, cakeStreakBonus: 0.22 },
+    // 25 treats, one per 4-level quest - getting bigger and more elaborate
+    const TREATS = [
+      // Quest 1-5: Simple snacks
+      { emoji: '🍬', name: 'Candy', size: 1.0 },
+      { emoji: '🍭', name: 'Lollipop', size: 1.0 },
+      { emoji: '🍪', name: 'Cookie', size: 1.0 },
+      { emoji: '🧁', name: 'Cupcake', size: 1.1 },
+      { emoji: '🍩', name: 'Donut', size: 1.1 },
+      // Quest 6-10: Sweet treats
+      { emoji: '🍫', name: 'Chocolate', size: 1.15 },
+      { emoji: '🍨', name: 'Ice Cream', size: 1.2 },
+      { emoji: '🍦', name: 'Soft Serve', size: 1.2 },
+      { emoji: '🥧', name: 'Pie', size: 1.25 },
+      { emoji: '🎂', name: 'Birthday Cake', size: 1.3 },
+      // Quest 11-15: Fancy desserts
+      { emoji: '🍰', name: 'Shortcake', size: 1.35 },
+      { emoji: '🥮', name: 'Moon Cake', size: 1.4 },
+      { emoji: '🍡', name: 'Dango', size: 1.4 },
+      { emoji: '🍮', name: 'Flan', size: 1.45 },
+      { emoji: '🧇', name: 'Waffle Stack', size: 1.5 },
+      // Quest 16-20: Premium rewards
+      { emoji: '🥞', name: 'Pancake Tower', size: 1.55 },
+      { emoji: '🍿', name: 'Mega Popcorn', size: 1.6 },
+      { emoji: '🥐', name: 'Golden Croissant', size: 1.65 },
+      { emoji: '🍯', name: 'Honey Pot', size: 1.7 },
+      { emoji: '🎁', name: 'Mystery Box', size: 1.75 },
+      // Quest 21-25: Legendary treats
+      { emoji: '👑', name: 'Royal Crown', size: 1.8 },
+      { emoji: '💎', name: 'Diamond Treat', size: 1.85 },
+      { emoji: '🌟', name: 'Golden Star', size: 1.9 },
+      { emoji: '🏆', name: 'Champion Trophy', size: 1.95 },
+      { emoji: '🎊', name: 'Grand Finale', size: 2.0 },
     ];
 
-    const TREAT_BY_SET = ['🍪', '🍩', '🧁'];
+    // Generate 100 levels with smooth difficulty curve
+    const LEVELS = [];
+    const LEVEL_NAMES = [
+      'Warm Up', 'Getting Started', 'Easy Does It', 'First Steps',
+      'Finding Rhythm', 'Steady Pace', 'Building Speed', 'Quick Fingers',
+      'Focus Time', 'Stay Sharp', 'Keep Moving', 'Don\'t Blink',
+      'Faster Now', 'Pick It Up', 'Swift Moves', 'Rapid Fire',
+      'Challenge Mode', 'Stepping Up', 'Getting Serious', 'No Mercy',
+      'Speed Demon', 'Lightning Fast', 'Blazing Trail', 'On Fire',
+      'Expert Zone', 'Pro Level', 'Master Class', 'Elite Tier',
+      'Legendary', 'Mythic', 'Godlike', 'Impossible',
+      'Beyond Limits', 'Transcendent', 'Cosmic', 'Galactic',
+      'Universal', 'Infinite', 'Eternal', 'Ultimate',
+    ];
+
+    for (let i = 0; i < TOTAL_LEVELS; i++) {
+      const progress = i / (TOTAL_LEVELS - 1); // 0 to 1
+      const eased = progress * progress * (3 - 2 * progress); // Smooth S-curve
+      
+      // Difficulty parameters gradually increase
+      const minInterval = 1.1 - eased * 0.75;  // 1.1 -> 0.35
+      const maxInterval = 1.6 - eased * 0.95;  // 1.6 -> 0.65
+      const baseSpeed = 125 + eased * 110;     // 125 -> 235
+      const speedRamp = 100 + eased * 280;     // 100 -> 380
+      const treatPerHit = 13 - Math.floor(eased * 7); // 13 -> 6
+      const treatStreakBonus = 0.5 - eased * 0.32;    // 0.5 -> 0.18
+
+      const nameIndex = Math.min(Math.floor(i / 2.5), LEVEL_NAMES.length - 1);
+      const levelInQuest = (i % 4) + 1;
+      const questNum = Math.floor(i / 4) + 1;
+      
+      LEVELS.push({
+        name: `${LEVEL_NAMES[nameIndex]} ${levelInQuest}`,
+        quest: questNum,
+        minInterval: Math.round(minInterval * 100) / 100,
+        maxInterval: Math.round(maxInterval * 100) / 100,
+        baseSpeed: Math.round(baseSpeed),
+        speedRamp: Math.round(speedRamp),
+        treatPerHit: treatPerHit,
+        treatStreakBonus: Math.round(treatStreakBonus * 100) / 100,
+      });
+    }
+
+    // Helper to get current treat
+    function getCurrentTreat(level) {
+      const questIndex = Math.floor((level - 1) / 4);
+      return TREATS[Math.min(questIndex, TREATS.length - 1)];
+    }
 
     const state = {
       running: false,
@@ -428,18 +493,23 @@
       updateHud();
 
       const cfg = LEVELS[state.level - 1];
-      showToast(`Level ${state.level}/${TOTAL_LEVELS}: ${cfg.name}`, 1100);
+      const treat = getCurrentTreat(state.level);
+      const questNum = Math.floor((state.level - 1) / 4) + 1;
+      showToast(`Level ${state.level} — Quest ${questNum}: ${treat.name} ${treat.emoji}`, 1100);
     }
 
     function updateHud() {
-      hudLevel.textContent = `Level: ${state.level} / ${TOTAL_LEVELS}`;
+      const treat = getCurrentTreat(state.level);
+      const questNum = Math.floor((state.level - 1) / 4) + 1;
+      hudLevel.textContent = `Level: ${state.level} / ${TOTAL_LEVELS} (Quest ${questNum}/25)`;
       hudMode.textContent = `Aim: ${state.aimDir < 0 ? 'Left' : 'Right'}`;
       hudScore.textContent = `Score: ${state.score}`;
       hudStreak.textContent = `Streak: ${state.streak}`;
       hudLives.textContent = `Lives: ${'❤'.repeat(Math.max(0, state.lives))}${'♡'.repeat(Math.max(0, 3 - state.lives))}`;
-      const cakePct = Math.max(0, Math.min(100, state.cake));
-      hudCake.textContent = `Cake: ${cakePct.toFixed(0)}%`;
-      cakeBar.style.width = `${cakePct}%`;
+      const treatPct = Math.max(0, Math.min(100, state.cake));
+      hudTreatIcon.textContent = treat.emoji;
+      hudTreat.textContent = `${treat.name}: ${treatPct.toFixed(0)}%`;
+      treatBar.style.width = `${treatPct}%`;
 
       setKeyClass('f', 'aiming', state.aimDir < 0);
       setKeyClass('j', 'aiming', state.aimDir > 0);
@@ -500,21 +570,64 @@
       const gatorX = w * 0.5;
       const gatorY = h * 0.86;
 
-      const dirX = state.aimDir * 0.62;
-      const dirY = -1.0;
-      const len = Math.hypot(dirX, dirY) || 1;
-      const nx = dirX / len;
-      const ny = dirY / len;
+      // Hitscan: find the nearest enemy on the aimed side
+      const targetSide = state.aimDir < 0 ? 'left' : 'right';
+      let nearestEnemy = null;
+      let nearestDist = Infinity;
+      let nearestIndex = -1;
 
-      const speed = state.practice ? 940 : 1020;
-      shots.push({
-        x: gatorX + state.aimDir * 18,
-        y: gatorY - 34,
-        vx: nx * speed,
-        vy: ny * speed,
-        r: 7,
-        life: 1.2, // seconds
-      });
+      for (let i = 0; i < enemies.length; i++) {
+        const e = enemies[i];
+        if (e.side !== targetSide) continue;
+        if (e.targeted) continue; // Skip enemies already being chased by water
+
+        const dist = Math.hypot(e.x - gatorX, e.y - gatorY);
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearestEnemy = e;
+          nearestIndex = i;
+        }
+      }
+
+      if (nearestEnemy) {
+        // Mark enemy as targeted so we don't shoot it again (but it keeps moving!)
+        nearestEnemy.targeted = true;
+        
+        // Create a tracking shot that chases the enemy
+        const speed = state.practice ? 700 : 800;
+        shots.push({
+          x: gatorX + state.aimDir * 18,
+          y: gatorY - 34,
+          vx: 0, // will be calculated each frame to track enemy
+          vy: 0,
+          speed: speed,
+          r: 7,
+          life: 3.0, // longer life since it's chasing
+          targetEnemy: nearestEnemy,
+          hasHit: false,
+        });
+        // Score is awarded when the shot actually hits, not now
+      } else {
+        // No enemy on that side - create visual shot that goes off screen
+        const dirX = state.aimDir * 1.0;
+        const dirY = -0.3;
+        const len = Math.hypot(dirX, dirY) || 1;
+        const speed = state.practice ? 940 : 1020;
+        shots.push({
+          x: gatorX + state.aimDir * 18,
+          y: gatorY - 34,
+          vx: (dirX / len) * speed,
+          vy: (dirY / len) * speed,
+          r: 7,
+          life: 1.5, // long enough to fly off screen
+        });
+
+        state.missedShots += 1;
+        if (state.missedShots >= 2 && state.streak > 0) {
+          state.streak = 0;
+          showToast('No enemies on that side — check your aim (F/J)!', 720);
+        }
+      }
     }
 
     function addSplash(x, y, n = 10) {
@@ -536,27 +649,20 @@
       state.win = !!win;
       state.lose = !win;
 
-      const title = win ? 'Cake secured! 🍰' : 'Swamp trouble! 💥';
+      const treat = getCurrentTreat(state.level);
+      const title = win ? `${treat.emoji} Treat secured! ${treat.emoji}` : 'Swamp trouble! 💥';
       const msg = win
-        ? `Your gator defended the swamp and earned the cake.\nFinal score: ${state.score}`
+        ? `Your gator defended the swamp and earned the ${treat.name}!\nFinal score: ${state.score}`
         : `Enemies reached you.\nFinal score: ${state.score}`;
 
       overlay.innerHTML = `
         <div class="card">
           <h1>${title}</h1>
           <p style="white-space: pre-line">${msg}</p>
-          <div class="big-keys" aria-label="Controls">
-            <div class="key">F<small>aim left (🪰)</small></div>
-            <div class="key space">SPACE<small>shoot (💦)</small></div>
-            <div class="key">J<small>aim right (🐆)</small></div>
-          </div>
-          <div class="btn-row">
-            <button id="restart-btn">Restart</button>
+          <div class="btn-row" style="margin-top: 18px;">
+            <button id="restart-btn">Try Again</button>
             <button class="secondary" id="restart-practice-btn">Practice Mode</button>
           </div>
-          <p style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
-            Keep thumbs on Space and index fingers on F/J — speed rewards staying in position.
-          </p>
         </div>
       `;
       overlay.classList.remove('hidden');
@@ -579,18 +685,10 @@
             <div class="treat">${treatEmoji}</div>
             <div class="sparkle">✨</div>
           </div>
-          <div class="big-keys" aria-label="Controls">
-            <div class="key">F<small>aim left (🪰)</small></div>
-            <div class="key space">SPACE<small>shoot (💦)</small></div>
-            <div class="key">J<small>aim right (🐆)</small></div>
-          </div>
-          <div class="btn-row">
+          <div class="btn-row" style="margin-top: 18px;">
             <button id="next-btn">${nextLabel}</button>
             <button class="secondary" id="restart-btn">Restart</button>
           </div>
-          <p style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
-            Keep thumbs on Space and index fingers on F/J — speed rewards staying in position.
-          </p>
         </div>
       `;
       overlay.classList.remove('hidden');
@@ -603,27 +701,26 @@
 
     function completeLevel() {
       const levelJustBeat = state.level;
-      const isSetEnd = levelJustBeat % 4 === 0;
+      const isQuestEnd = levelJustBeat % 4 === 0;
       const isFinal = levelJustBeat === TOTAL_LEVELS;
+      const questNum = Math.floor((levelJustBeat - 1) / 4) + 1;
+      const treat = getCurrentTreat(levelJustBeat);
 
-      // Quick flow for non-set levels: short toast + auto-advance.
-      if (!isSetEnd) {
+      // Quick flow for non-quest-end levels: short toast + auto-advance.
+      if (!isQuestEnd) {
         state.running = false;
         overlay.classList.add('hidden');
-        showToast(`Level ${levelJustBeat} complete!`, 800);
+        showToast(`Level ${levelJustBeat} complete! ${treat.emoji}`, 800);
         window.setTimeout(() => startLevel(levelJustBeat + 1), 900);
         return;
       }
 
-      // Set victory screens at levels 4, 8, 12.
-      const setIndex = Math.floor((levelJustBeat - 1) / 4); // 0..2
-      const treat = TREAT_BY_SET[setIndex] || '🍪';
-
+      // Quest victory screens every 4 levels
       if (isFinal) {
         showSetVictory({
-          treatEmoji: treat,
-          title: 'All 12 levels complete! 🍰',
-          message: `Your gator earned the cake — and a final treat!\nFinal score: ${state.score}`,
+          treatEmoji: treat.emoji,
+          title: `🎊 ALL 100 LEVELS COMPLETE! 🎊`,
+          message: `LEGENDARY! Your gator conquered all 25 treat quests!\nFinal treat: ${treat.name} ${treat.emoji}\nFinal score: ${state.score}`,
           nextLabel: 'Play Again',
           onNext: () => resetGame({ practice: state.practice }),
         });
@@ -631,11 +728,12 @@
       }
 
       const nextLevel = levelJustBeat + 1;
+      const nextTreat = getCurrentTreat(nextLevel);
       showSetVictory({
-        treatEmoji: treat,
-        title: `Set complete! Level ${levelJustBeat} cleared!`,
-        message: `Treat time!\nNext up: Level ${nextLevel}/${TOTAL_LEVELS}.`,
-        nextLabel: `Start Level ${nextLevel}`,
+        treatEmoji: treat.emoji,
+        title: `Quest ${questNum}/25 Complete! ${treat.emoji}`,
+        message: `Your gator earned the ${treat.name}!\nNext quest: ${nextTreat.name} ${nextTreat.emoji}\nLevel ${nextLevel}/${TOTAL_LEVELS}`,
+        nextLabel: `Start Quest ${questNum + 1}`,
         onNext: () => startLevel(nextLevel),
       });
     }
@@ -660,7 +758,8 @@
       const streakBoost = Math.min(0.18, state.streak * 0.004);
       const spawnInterval = (maxInterval - (maxInterval - minInterval) * difficulty) * (1 - streakBoost);
 
-      if (state.spawnT <= 0) {
+      // Stop spawning once meter is full - just need to clear remaining enemies
+      if (state.spawnT <= 0 && state.cake < 100) {
         spawnEnemy();
         state.spawnT = spawnInterval * rand(0.55, 0.95);
       }
@@ -682,10 +781,11 @@
         const nx = dx / len;
         const ny = dy / len;
 
+        // All enemies keep moving (even if targeted by a shot)
         e.x += nx * e.speed * dt;
         e.y += ny * e.speed * dt;
 
-        // Reached gator
+        // Reached gator - enemy hurts you (even if shot was chasing it)
         if (Math.hypot(e.x - gatorX, e.y - gatorY) < (e.r + 26)) {
           enemies.splice(i, 1);
           addSplash(gatorX + rand(-18, 18), gatorY - rand(10, 26), 18);
@@ -693,7 +793,7 @@
           state.streak = 0;
           state.missedShots = 0;
           state.lastHitAt = performance.now();
-          showToast('Ouch! Keep your aim ready (F/J)!', 850);
+          showToast('Ouch! The water didn\'t reach in time!', 850);
           if (state.lives <= 0) {
             updateHud();
             endGame(false);
@@ -702,48 +802,55 @@
         }
       }
 
-      // Update shots
+      // Update shots - tracking shots chase their target enemy
       for (let i = shots.length - 1; i >= 0; i--) {
         const s = shots[i];
+        s.life -= dt;
+        
+        if (s.targetEnemy && !s.hasHit) {
+          const enemyIndex = enemies.indexOf(s.targetEnemy);
+          if (enemyIndex >= 0) {
+            const e = enemies[enemyIndex];
+            // Update velocity to track the moving enemy
+            const dx = e.x - s.x;
+            const dy = e.y - s.y;
+            const dist = Math.hypot(dx, dy) || 1;
+            s.vx = (dx / dist) * s.speed;
+            s.vy = (dy / dist) * s.speed;
+            
+            // Check if shot has caught up to enemy
+            const hitThreshold = h * 0.035;
+            if (dist < hitThreshold) {
+              s.hasHit = true;
+              addSplash(e.x, e.y, e.side === 'left' ? 10 : 14);
+              enemies.splice(enemyIndex, 1);
+              // Award score when shot actually hits
+              state.missedShots = 0;
+              state.streak += 1;
+              const streakBonus = Math.min(40, state.streak * 2);
+              state.score += 10 + streakBonus;
+              const cfg = LEVELS[state.level - 1];
+              const treatGain = cfg.treatPerHit + Math.min(10, state.streak) * cfg.treatStreakBonus;
+              state.cake = Math.min(100, state.cake + treatGain);
+            }
+          } else {
+            // Enemy already gone (reached gator) - shot missed
+            s.hasHit = true;
+          }
+        }
+        
+        // Move the shot
         s.x += s.vx * dt;
         s.y += s.vy * dt;
-        s.life -= dt;
+        
         if (s.life <= 0 || s.x < -80 || s.x > w + 80 || s.y < -80 || s.y > h + 80) {
           shots.splice(i, 1);
-          state.missedShots += 1;
-          if (state.missedShots >= 2 && state.streak > 0) {
-            state.streak = 0;
-            showToast('Missed — keep eyes up and aim (F/J)!', 720);
-          }
           continue;
         }
       }
 
-      // Collisions
-      for (let si = shots.length - 1; si >= 0; si--) {
-        const s = shots[si];
-        let hit = false;
-        for (let ei = enemies.length - 1; ei >= 0; ei--) {
-          const e = enemies[ei];
-          if (Math.hypot(s.x - e.x, s.y - e.y) <= (s.r + e.r)) {
-            enemies.splice(ei, 1);
-            shots.splice(si, 1);
-            addSplash(e.x, e.y, e.side === 'left' ? 10 : 14);
-            state.missedShots = 0;
-            state.streak += 1;
-            const streakBonus = Math.min(40, state.streak * 2);
-            state.score += 10 + streakBonus;
-            const cfg = LEVELS[state.level - 1];
-            const cakeGain = cfg.cakePerHit + Math.min(10, state.streak) * cfg.cakeStreakBonus;
-            state.cake = Math.min(100, state.cake + cakeGain);
-            hit = true;
-            break;
-          }
-        }
-        if (hit) continue;
-      }
-
-      if (state.cake >= 100 && !state.win && !state.lose) {
+      // Level complete when meter is full AND no enemies remain on screen
+      if (state.cake >= 100 && enemies.length === 0 && !state.win && !state.lose) {
         updateHud();
         completeLevel();
         return;
@@ -794,17 +901,19 @@
       }
       ctx.globalAlpha = 1;
 
-      // Cake at top center
-      const cakeX = w * 0.5;
-      const cakeY = h * 0.10;
-      ctx.font = `${Math.round(h * 0.07)}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      // Current treat at top center
+      const treat = getCurrentTreat(state.level);
+      const treatX = w * 0.5;
+      const treatY = h * 0.10;
+      const treatSize = Math.round(h * 0.07 * treat.size);
+      ctx.font = `${treatSize}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('🍰', cakeX, cakeY);
+      ctx.fillText(treat.emoji, treatX, treatY);
       ctx.globalAlpha = 0.85;
-      ctx.font = `${Math.round(h * 0.035)}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
-      ctx.fillText('✨', cakeX - h * 0.06, cakeY + h * 0.02);
-      ctx.fillText('✨', cakeX + h * 0.06, cakeY + h * 0.02);
+      ctx.font = `${Math.round(h * 0.035 * treat.size)}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      ctx.fillText('✨', treatX - h * 0.06 * treat.size, treatY + h * 0.02);
+      ctx.fillText('✨', treatX + h * 0.06 * treat.size, treatY + h * 0.02);
       ctx.globalAlpha = 1;
 
       // Swamp ground + water
@@ -838,25 +947,46 @@
       }
       ctx.globalAlpha = 1;
 
-      // Aim indicator
+      // Zone indicators and aim overlay
       const gatorX = w * 0.5;
       const gatorY = h * 0.86;
-      const aimX = gatorX + state.aimDir * (w * 0.22);
-      const aimY = gatorY - h * 0.28;
+      const zoneTop = h * 0.12;
+      const zoneBottom = groundY - h * 0.02;
+      const zoneHeight = zoneBottom - zoneTop;
+      const letterSize = Math.round(h * 0.35);
 
-      ctx.strokeStyle = state.aimDir < 0 ? 'rgba(255, 180, 0, 0.9)' : 'rgba(255, 180, 0, 0.9)';
-      ctx.lineWidth = Math.max(3, h * 0.008);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(gatorX, gatorY - h * 0.02);
-      ctx.lineTo(aimX, aimY);
-      ctx.stroke();
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = 'rgba(255, 215, 0, 0.95)';
-      ctx.beginPath();
-      ctx.arc(aimX, aimY, Math.max(6, h * 0.012), 0, Math.PI * 2);
-      ctx.fill();
+      // Background letters (always visible, subtle)
+      ctx.font = `900 ${letterSize}px system-ui, -apple-system, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Left side - F (subtle background)
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = '#2d5016';
+      ctx.fillText('F', w * 0.25, zoneTop + zoneHeight * 0.5);
+      
+      // Right side - J (subtle background)
+      ctx.fillText('J', w * 0.75, zoneTop + zoneHeight * 0.5);
       ctx.globalAlpha = 1;
+
+      // Active aim overlay - highlights the aimed side
+      if (state.aimDir < 0) {
+        // Left side active - F
+        ctx.fillStyle = 'rgba(255, 200, 50, 0.18)';
+        ctx.fillRect(0, zoneTop, w * 0.5, zoneHeight);
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = '#B08200';
+        ctx.fillText('F', w * 0.25, zoneTop + zoneHeight * 0.5);
+        ctx.globalAlpha = 1;
+      } else {
+        // Right side active - J
+        ctx.fillStyle = 'rgba(255, 200, 50, 0.18)';
+        ctx.fillRect(w * 0.5, zoneTop, w * 0.5, zoneHeight);
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = '#B08200';
+        ctx.fillText('J', w * 0.75, zoneTop + zoneHeight * 0.5);
+        ctx.globalAlpha = 1;
+      }
 
       // Enemies
       for (const e of enemies) {
@@ -865,18 +995,22 @@
         ctx.fillText(e.emoji, e.x, e.y);
       }
 
-      // Shots
+      // Shots - water droplets with high visibility
       for (const s of shots) {
-        ctx.fillStyle = 'rgba(140, 220, 255, 0.98)';
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 0.5;
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.beginPath();
-        ctx.arc(s.x - s.r * 0.35, s.y - s.r * 0.35, s.r * 0.35, 0, Math.PI * 2);
-        ctx.fill();
+        const shotSize = Math.round(h * 0.045);
+        ctx.font = `${shotSize}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        // Draw multiple water emojis for visibility
+        ctx.fillText('💧', s.x, s.y);
+        ctx.globalAlpha = 0.7;
+        ctx.fillText('💦', s.x + shotSize * 0.4, s.y - shotSize * 0.3);
         ctx.globalAlpha = 1;
+        // Add a bright outline/glow for contrast against blue sky
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+        ctx.shadowBlur = 8;
+        ctx.fillText('💧', s.x, s.y);
+        ctx.shadowBlur = 0;
       }
 
       // Particles
@@ -889,10 +1023,19 @@
       }
       ctx.globalAlpha = 1;
 
-      // Gator (bottom center)
+      // Gator (bottom center) - flips to aim tail toward enemies
       const gatorSize = Math.round(h * 0.09);
       ctx.font = `${gatorSize}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
-      ctx.fillText('🐊', gatorX, gatorY);
+      ctx.save();
+      ctx.translate(gatorX, gatorY);
+      // Gator emoji 🐊 has head on right, tail on left by default
+      // Aiming left: tail should point left → default orientation (no flip)
+      // Aiming right: tail should point right → flip horizontally
+      if (state.aimDir > 0) {
+        ctx.scale(-1, 1); // Flip horizontally when aiming right
+      }
+      ctx.fillText('🐊', 0, 0);
+      ctx.restore();
 
       // Hurt flash
       const sinceHit = performance.now() - state.lastHitAt;
