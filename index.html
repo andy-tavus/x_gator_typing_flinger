@@ -297,7 +297,6 @@
           </p>
           <div class="btn-row">
             <button id="start-btn">Start</button>
-            <button class="secondary" id="practice-btn" title="Start slower">Practice Mode</button>
           </div>
           <p style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
             Tip: Press <b>F</b>/<b>J</b> to aim, <b>Space</b> to fling. Every 4 levels your gator earns a bigger treat!
@@ -322,7 +321,6 @@
     const overlay = document.getElementById('overlay');
     const toast = document.getElementById('toast');
     const startBtn = document.getElementById('start-btn');
-    const practiceBtn = document.getElementById('practice-btn');
 
     const hudLevel = document.getElementById('hud-level');
     const hudMode = document.getElementById('hud-mode');
@@ -456,6 +454,8 @@
       win: false,
       lose: false,
       lastHitAt: 0,
+      enemiesSpawned: 0,  // enemies spawned this level
+      flingsUsed: 0,      // flings used this level
     };
 
     const enemies = [];
@@ -484,6 +484,8 @@
       state.shotCooldown = 0;
       state.missedShots = 0;
       state.lastHitAt = 0;
+      state.enemiesSpawned = 0;
+      state.flingsUsed = 0;
 
       enemies.length = 0;
       shots.length = 0;
@@ -555,13 +557,26 @@
         speed,
         wobble: rand(0, Math.PI * 2),
       });
+      state.enemiesSpawned++;
+    }
+
+    function getAvailableFlings() {
+      // Flings available = enemies spawned - flings used + 4 buffer
+      return Math.max(0, state.enemiesSpawned - state.flingsUsed + 4);
     }
 
     function shoot() {
       if (!state.running || state.win || state.lose) return;
       if (state.shotCooldown > 0) return;
+      
+      // Check if we have flings available
+      if (getAvailableFlings() <= 0) {
+        showToast('Out of water! Wait for more enemies...', 600);
+        return;
+      }
 
       state.shotCooldown = 0.145; // seconds
+      state.flingsUsed++;
       setKeyClass('space', 'pressed', true);
       window.setTimeout(() => setKeyClass('space', 'pressed', false), 90);
 
@@ -661,16 +676,13 @@
           <p style="white-space: pre-line">${msg}</p>
           <div class="btn-row" style="margin-top: 18px;">
             <button id="restart-btn">Try Again</button>
-            <button class="secondary" id="restart-practice-btn">Practice Mode</button>
           </div>
         </div>
       `;
       overlay.classList.remove('hidden');
 
       const restart = overlay.querySelector('#restart-btn');
-      const restartPractice = overlay.querySelector('#restart-practice-btn');
       if (restart) restart.addEventListener('click', () => resetGame({ practice: false }));
-      if (restartPractice) restartPractice.addEventListener('click', () => resetGame({ practice: true }));
     }
 
     function showSetVictory({ treatEmoji, title, message, nextLabel, onNext }) {
@@ -687,16 +699,16 @@
           </div>
           <div class="btn-row" style="margin-top: 18px;">
             <button id="next-btn">${nextLabel}</button>
-            <button class="secondary" id="restart-btn">Restart</button>
           </div>
+          <p style="margin-top: 12px;"><a href="#" id="restart-link" style="font-size: 13px; color: #666; text-decoration: underline;">or restart from level 1</a></p>
         </div>
       `;
       overlay.classList.remove('hidden');
 
       const nextBtn = overlay.querySelector('#next-btn');
-      const restartBtn = overlay.querySelector('#restart-btn');
+      const restartLink = overlay.querySelector('#restart-link');
       if (nextBtn) nextBtn.addEventListener('click', onNext);
-      if (restartBtn) restartBtn.addEventListener('click', () => resetGame({ practice: state.practice }));
+      if (restartLink) restartLink.addEventListener('click', (e) => { e.preventDefault(); resetGame({ practice: false }); });
     }
 
     function completeLevel() {
@@ -1037,6 +1049,33 @@
       ctx.fillText('🐊', 0, 0);
       ctx.restore();
 
+      // Available flings indicator (water drops under gator)
+      const availableFlings = getAvailableFlings();
+      const maxDisplayFlings = 12; // Show up to 12 drops
+      const displayFlings = Math.min(availableFlings, maxDisplayFlings);
+      const dropSize = Math.round(h * 0.028);
+      const dropSpacing = dropSize * 1.1;
+      const dropsStartX = gatorX - (displayFlings - 1) * dropSpacing * 0.5;
+      const dropsY = gatorY + h * 0.055;
+      
+      ctx.font = `${dropSize}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      for (let i = 0; i < displayFlings; i++) {
+        const dropX = dropsStartX + i * dropSpacing;
+        ctx.globalAlpha = 0.9;
+        ctx.fillText('💧', dropX, dropsY);
+      }
+      // Show +N if more than maxDisplayFlings
+      if (availableFlings > maxDisplayFlings) {
+        ctx.globalAlpha = 0.8;
+        ctx.font = `bold ${Math.round(h * 0.022)}px system-ui, sans-serif`;
+        ctx.fillStyle = '#0088cc';
+        ctx.fillText(`+${availableFlings - maxDisplayFlings}`, dropsStartX + displayFlings * dropSpacing + dropSize * 0.3, dropsY);
+      }
+      ctx.globalAlpha = 1;
+
       // Hurt flash
       const sinceHit = performance.now() - state.lastHitAt;
       if (sinceHit >= 0 && sinceHit < 240) {
@@ -1099,7 +1138,6 @@
     }
 
     startBtn.addEventListener('click', () => resetGame({ practice: false }));
-    practiceBtn.addEventListener('click', () => resetGame({ practice: true }));
     overlay.addEventListener('click', (e) => {
       // Clicking the dark backdrop shouldn't restart by accident.
       if (e.target === overlay) {
