@@ -665,24 +665,33 @@
       state.lose = !win;
 
       const treat = getCurrentTreat(state.level);
+      const questNum = Math.floor((state.level - 1) / 4) + 1;
+      const questStartLevel = (questNum - 1) * 4 + 1;
+      
       const title = win ? `${treat.emoji} Treat secured! ${treat.emoji}` : 'Swamp trouble! 💥';
       const msg = win
         ? `Your gator defended the swamp and earned the ${treat.name}!\nFinal score: ${state.score}`
-        : `Enemies reached you.\nFinal score: ${state.score}`;
+        : `Enemies reached you.\nScore: ${state.score}`;
 
       overlay.innerHTML = `
         <div class="card">
           <h1>${title}</h1>
           <p style="white-space: pre-line">${msg}</p>
           <div class="btn-row" style="margin-top: 18px;">
-            <button id="restart-btn">Try Again</button>
+            <button id="restart-btn">Retry Quest ${questNum} (Level ${questStartLevel})</button>
           </div>
         </div>
       `;
       overlay.classList.remove('hidden');
 
       const restart = overlay.querySelector('#restart-btn');
-      if (restart) restart.addEventListener('click', () => resetGame({ practice: false }));
+      if (restart) restart.addEventListener('click', () => {
+        state.score = 0;
+        state.elapsed = 0;
+        state.win = false;
+        state.lose = false;
+        startLevel(questStartLevel);
+      });
     }
 
     function showSetVictory({ treatEmoji, title, message, nextLabel, onNext }) {
