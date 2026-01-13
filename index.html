@@ -404,20 +404,59 @@
     ];
 
     for (let i = 0; i < TOTAL_LEVELS; i++) {
-      const progress = i / (TOTAL_LEVELS - 1); // 0 to 1
-      const eased = progress * progress * (3 - 2 * progress); // Smooth S-curve
+      const questNum = Math.floor(i / 4) + 1;
+      const levelInQuest = (i % 4) + 1;
       
-      // Difficulty parameters gradually increase
-      const minInterval = 1.1 - eased * 0.75;  // 1.1 -> 0.35
-      const maxInterval = 1.6 - eased * 0.95;  // 1.6 -> 0.65
-      const baseSpeed = 125 + eased * 110;     // 125 -> 235
-      const speedRamp = 100 + eased * 280;     // 100 -> 380
-      const treatPerHit = 13 - Math.floor(eased * 7); // 13 -> 6
-      const treatStreakBonus = 0.5 - eased * 0.32;    // 0.5 -> 0.18
+      // Custom difficulty curve - very easy start, gradual ramp
+      let minInterval, maxInterval, baseSpeed, speedRamp, treatPerHit, treatStreakBonus;
+      
+      if (questNum === 1) {
+        // Quest 1 (levels 1-4): Super easy - great for learning
+        minInterval = 2.8 - (levelInQuest - 1) * 0.15;  // 2.8 -> 2.35
+        maxInterval = 3.8 - (levelInQuest - 1) * 0.2;   // 3.8 -> 3.2
+        baseSpeed = 55 + (levelInQuest - 1) * 8;        // 55 -> 79
+        speedRamp = 20 + (levelInQuest - 1) * 10;       // 20 -> 50
+        treatPerHit = 18;                               // Very generous
+        treatStreakBonus = 0.8;
+      } else if (questNum === 2) {
+        // Quest 2 (levels 5-8): Still easy
+        minInterval = 2.2 - (levelInQuest - 1) * 0.1;   // 2.2 -> 1.9
+        maxInterval = 3.0 - (levelInQuest - 1) * 0.15;  // 3.0 -> 2.55
+        baseSpeed = 70 + (levelInQuest - 1) * 8;        // 70 -> 94
+        speedRamp = 40 + (levelInQuest - 1) * 10;       // 40 -> 70
+        treatPerHit = 16;
+        treatStreakBonus = 0.7;
+      } else if (questNum === 3) {
+        // Quest 3 (levels 9-12): Getting comfortable
+        minInterval = 1.8 - (levelInQuest - 1) * 0.08;  // 1.8 -> 1.56
+        maxInterval = 2.5 - (levelInQuest - 1) * 0.12;  // 2.5 -> 2.14
+        baseSpeed = 85 + (levelInQuest - 1) * 8;        // 85 -> 109
+        speedRamp = 60 + (levelInQuest - 1) * 12;       // 60 -> 96
+        treatPerHit = 14;
+        treatStreakBonus = 0.6;
+      } else if (questNum <= 6) {
+        // Quests 4-6 (levels 13-24): Moderate challenge
+        const qProgress = (questNum - 4) / 3; // 0 to 1 within this range
+        minInterval = 1.5 - qProgress * 0.3 - (levelInQuest - 1) * 0.05;
+        maxInterval = 2.1 - qProgress * 0.4 - (levelInQuest - 1) * 0.08;
+        baseSpeed = 100 + qProgress * 30 + (levelInQuest - 1) * 6;
+        speedRamp = 80 + qProgress * 40 + (levelInQuest - 1) * 10;
+        treatPerHit = 13 - Math.floor(qProgress * 2);
+        treatStreakBonus = 0.55 - qProgress * 0.1;
+      } else {
+        // Quests 7-25 (levels 25-100): Progressive challenge
+        const progress = (i - 24) / (TOTAL_LEVELS - 25); // 0 to 1 for remaining levels
+        const eased = progress * progress * (3 - 2 * progress);
+        
+        minInterval = 1.15 - eased * 0.75;  // 1.15 -> 0.4
+        maxInterval = 1.6 - eased * 0.9;    // 1.6 -> 0.7
+        baseSpeed = 130 + eased * 100;      // 130 -> 230
+        speedRamp = 120 + eased * 250;      // 120 -> 370
+        treatPerHit = 11 - Math.floor(eased * 5); // 11 -> 6
+        treatStreakBonus = 0.45 - eased * 0.25;   // 0.45 -> 0.2
+      }
 
       const nameIndex = Math.min(Math.floor(i / 2.5), LEVEL_NAMES.length - 1);
-      const levelInQuest = (i % 4) + 1;
-      const questNum = Math.floor(i / 4) + 1;
       
       LEVELS.push({
         name: `${LEVEL_NAMES[nameIndex]} ${levelInQuest}`,
