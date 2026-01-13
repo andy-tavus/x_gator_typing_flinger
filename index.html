@@ -1151,6 +1151,16 @@
 
     function onKeyDown(e) {
       const k = e.key.toLowerCase();
+      
+      // Enter key clicks the primary button on overlay screens
+      if (e.key === 'Enter' && !state.running) {
+        const primaryBtn = overlay.querySelector('#start-btn, #next-btn, #restart-btn');
+        if (primaryBtn) {
+          primaryBtn.click();
+          return;
+        }
+      }
+      
       if (k !== 'f' && k !== 'j' && k !== ' ') {
         if (state.running) {
           state.streak = 0;
