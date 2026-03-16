@@ -411,13 +411,24 @@
       let minInterval, maxInterval, baseSpeed, speedRamp, treatPerHit, treatStreakBonus;
       
       if (questNum === 1) {
-        // Quest 1 (levels 1-4): Super easy - great for learning
-        minInterval = 2.8 - (levelInQuest - 1) * 0.15;  // 2.8 -> 2.35
-        maxInterval = 3.8 - (levelInQuest - 1) * 0.2;   // 3.8 -> 3.2
-        baseSpeed = 55 + (levelInQuest - 1) * 8;        // 55 -> 79
-        speedRamp = 20 + (levelInQuest - 1) * 10;       // 20 -> 50
-        treatPerHit = 18;                               // Very generous
-        treatStreakBonus = 0.8;
+        // Quest 1 (levels 1-4): Super easy - great for learning (levels 1-2 extra gentle)
+        if (levelInQuest === 1) {
+          minInterval = 3.8;   maxInterval = 5.2;   // lots of time between spawns
+          baseSpeed = 36;      speedRamp = 8;      // very slow enemies
+          treatPerHit = 26;    treatStreakBonus = 1.0;  // ~4 hits to fill meter
+        } else if (levelInQuest === 2) {
+          minInterval = 3.3;   maxInterval = 4.5;
+          baseSpeed = 42;      speedRamp = 12;
+          treatPerHit = 22;    treatStreakBonus = 0.9;
+        } else if (levelInQuest === 3) {
+          minInterval = 2.9;   maxInterval = 3.9;
+          baseSpeed = 50;      speedRamp = 16;
+          treatPerHit = 19;    treatStreakBonus = 0.85;
+        } else {
+          minInterval = 2.6;   maxInterval = 3.4;
+          baseSpeed = 58;      speedRamp = 20;
+          treatPerHit = 18;    treatStreakBonus = 0.8;
+        }
       } else if (questNum === 2) {
         // Quest 2 (levels 5-8): Still easy
         minInterval = 2.2 - (levelInQuest - 1) * 0.1;   // 2.2 -> 1.9
@@ -457,7 +468,9 @@
       }
 
       const nameIndex = Math.min(Math.floor(i / 2.5), LEVEL_NAMES.length - 1);
-      
+      // Early levels ramp difficulty more slowly so kids have time to learn
+      const rampSeconds = (questNum === 1 && levelInQuest <= 2) ? 28 : (questNum === 1 ? 24 : 20);
+
       LEVELS.push({
         name: `${LEVEL_NAMES[nameIndex]} ${levelInQuest}`,
         quest: questNum,
@@ -467,6 +480,7 @@
         speedRamp: Math.round(speedRamp),
         treatPerHit: treatPerHit,
         treatStreakBonus: Math.round(treatStreakBonus * 100) / 100,
+        rampSeconds,
       });
     }
 
@@ -580,7 +594,7 @@
       const y = rand(h * 0.18, groundY - h * 0.18);
 
       const cfg = LEVELS[state.level - 1];
-      const rampSeconds = state.practice ? 26 : 20;
+      const rampSeconds = state.practice ? 26 : (cfg.rampSeconds ?? 20);
       const difficulty = clamp01(state.levelElapsed / rampSeconds);
       const practiceMult = state.practice ? 0.86 : 1.0;
       const speed = (cfg.baseSpeed + difficulty * cfg.speedRamp + Math.min(160, state.streak * 2.2)) * practiceMult;
@@ -810,7 +824,7 @@
 
       // Spawn rate ramps up over time and streak.
       const cfg = LEVELS[state.level - 1];
-      const rampSeconds = state.practice ? 26 : 20;
+      const rampSeconds = state.practice ? 26 : (cfg.rampSeconds ?? 20);
       const difficulty = clamp01(state.levelElapsed / rampSeconds);
       const practiceIntervalMult = state.practice ? 1.18 : 1.0;
       const minInterval = cfg.minInterval * practiceIntervalMult;
