@@ -559,14 +559,27 @@
       easy: { label: 'Easy', intervalMult: 1, speedMult: 1, treatMult: 1, streakTreatMult: 1, rampMult: 1, shotMult: 1 },
       medium: { label: 'Medium', intervalMult: 0.9, speedMult: 1.1, treatMult: 0.94, streakTreatMult: 0.95, rampMult: 0.94, shotMult: 1 },
       hard: { label: 'Hard', intervalMult: 0.8, speedMult: 1.2, treatMult: 0.86, streakTreatMult: 0.88, rampMult: 0.86, shotMult: 1 },
-      extreme: { label: 'Extreme', intervalMult: 0.7, speedMult: 1.32, treatMult: 0.78, streakTreatMult: 0.8, rampMult: 0.8, shotMult: 0.95 },
+      extreme: {
+        label: 'Extreme',
+        intervalMult: 0.56,
+        speedMult: 1.55,
+        treatMult: 0.64,
+        streakTreatMult: 0.66,
+        rampMult: 0.58,
+        shotMult: 0.86,
+        spawnFloor: 0.26,
+        rampFloor: 7,
+      },
     };
 
     function getLevelRuntimeConfig(levelIndex) {
       const base = LEVELS[levelIndex];
       const d = DIFFICULTY_PRESETS[state.difficulty] || DIFFICULTY_PRESETS.easy;
-      const minI = Math.max(0.34, base.minInterval * d.intervalMult);
-      const maxI = Math.max(minI + 0.1, base.maxInterval * d.intervalMult);
+      const spawnFloor = d.spawnFloor ?? 0.34;
+      const rampFloor = d.rampFloor ?? 12;
+      const minI = Math.max(spawnFloor, base.minInterval * d.intervalMult);
+      const maxGap = d.spawnFloor != null ? 0.08 : 0.1;
+      const maxI = Math.max(minI + maxGap, base.maxInterval * d.intervalMult);
       return {
         ...base,
         minInterval: Math.round(minI * 100) / 100,
@@ -575,7 +588,7 @@
         speedRamp: Math.round(base.speedRamp * d.speedMult),
         treatPerHit: Math.max(4, Math.round(base.treatPerHit * d.treatMult)),
         treatStreakBonus: Math.max(0.12, Math.round(base.treatStreakBonus * d.streakTreatMult * 100) / 100),
-        rampSeconds: Math.max(12, Math.round(base.rampSeconds * d.rampMult)),
+        rampSeconds: Math.max(rampFloor, Math.round(base.rampSeconds * d.rampMult)),
       };
     }
 
