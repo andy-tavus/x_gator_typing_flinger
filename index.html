@@ -565,16 +565,24 @@
         speedMult: 1.55,
         treatMult: 0.64,
         streakTreatMult: 0.66,
-        rampMult: 0.58,
+        rampMult: 0.5,
         shotMult: 0.86,
         spawnFloor: 0.26,
-        rampFloor: 7,
+        rampFloor: 6,
+        earlyLevelSkew: 20,
       },
     };
 
     function getLevelRuntimeConfig(levelIndex) {
-      const base = LEVELS[levelIndex];
+      let baseIdx = levelIndex;
       const d = DIFFICULTY_PRESETS[state.difficulty] || DIFFICULTY_PRESETS.easy;
+      if (state.difficulty === 'extreme' && typeof d.earlyLevelSkew === 'number' && d.earlyLevelSkew > 0) {
+        const denom = Math.max(1, TOTAL_LEVELS - 1);
+        const through = levelIndex / denom;
+        const skew = Math.round((1 - through) * d.earlyLevelSkew);
+        baseIdx = Math.min(TOTAL_LEVELS - 1, levelIndex + skew);
+      }
+      const base = LEVELS[baseIdx];
       const spawnFloor = d.spawnFloor ?? 0.34;
       const rampFloor = d.rampFloor ?? 12;
       const minI = Math.max(spawnFloor, base.minInterval * d.intervalMult);
@@ -588,7 +596,10 @@
         speedRamp: Math.round(base.speedRamp * d.speedMult),
         treatPerHit: Math.max(4, Math.round(base.treatPerHit * d.treatMult)),
         treatStreakBonus: Math.max(0.12, Math.round(base.treatStreakBonus * d.streakTreatMult * 100) / 100),
-        rampSeconds: Math.max(rampFloor, Math.round(base.rampSeconds * d.rampMult)),
+        rampSeconds: Math.max(
+          rampFloor,
+          Math.round(base.rampSeconds * d.rampMult * (state.difficulty === 'extreme' ? 0.88 : 1)),
+        ),
       };
     }
 
