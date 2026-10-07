@@ -703,8 +703,8 @@
     const shots = [];
     const particles = [];
 
-    const BOARD_API = 'https://crudcrud.com/api/ed727fe3bf9746cc94b041f0f2121972';
-    const BOARD_ID = '6abe9c1278122c03e8778fa0';
+    const BOARD_API = 'https://crudcrud.com/api/596c9e26cd634ccd802fccf0042d84cb';
+    const BOARD_ID = '6ac652023c1f9403e86ac5db';
     const PLAYER_KEY = 'gatorPlayerV1';
     const ADMIN_PASS_SHA256 = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
     const NAME_ADJECTIVES = [
@@ -743,7 +743,8 @@
       'Weasel','Wombat','Woodpecker','Wren','Yak','Zebra','Zebu','Marten','Mongoose','Nuthatch',
     ];
 
-    let boardCache = { names: [], rows: [], rev: 0 };
+    let boardCache = { names: [], rows: [], rev: 0, write: '' };
+    let boardOnline = false;
     let boardQueue = Promise.resolve();
     let player = null;
     let scoreGen = 0;
@@ -782,8 +783,9 @@
     }
 
     function boardMarkup() {
+      if (!boardOnline) return '<p class="board-empty">Score board is offline right now.</p>';
       const rows = publicRows();
-      if (!rows.length) return '<p class="board-empty">No scores yet.</p>';
+      if (!rows.length) return '<p class="board-empty">No scores yet. Finish a run to post one.</p>';
       return `<ol class="board">${rows.map((row) => (
         `<li><span class="board-name">${escapeHtml(row.name)}</span> <span class="board-score">${row.shown}</span><span class="board-diff">${escapeHtml((DIFFICULTY_PRESETS[row.difficulty] || {}).label || row.difficulty)}</span></li>`
       )).join('')}</ol>`;
@@ -805,9 +807,14 @@
       const res = await fetch(`${BOARD_API}/boards/${BOARD_ID}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('board');
       const data = await res.json();
+      if (!data || typeof data !== 'object' || Array.isArray(data.names) === false) {
+        throw new Error('board');
+      }
+      boardOnline = true;
       boardCache = {
         names: Array.isArray(data.names) ? data.names : [],
         rows: Array.isArray(data.rows) ? data.rows : [],
+        rev: data.rev || 0,
         write: data.write || '',
       };
       renderBoards();
@@ -859,6 +866,8 @@
       try {
         await fetchBoard();
       } catch (err) {
+        boardOnline = false;
+        renderBoards();
         if (!player || !player.name) {
           player = { name: randomPairName([]) };
           localStorage.setItem(PLAYER_KEY, JSON.stringify(player));
@@ -1753,7 +1762,10 @@
     if (new URLSearchParams(location.search).get('panel') === '1' || location.hash === '#panel') openOps();
     window.setInterval(() => {
       if (document.hidden) return;
-      fetchBoard().catch(() => {});
+      fetchBoard().catch(() => {
+        boardOnline = false;
+        renderBoards();
+      });
     }, 12000);
     overlay.addEventListener('click', (e) => {
       // Clicking the dark backdrop shouldn't restart by accident.
