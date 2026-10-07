@@ -703,8 +703,10 @@
     const shots = [];
     const particles = [];
 
-    const BOARD_API = 'https://crudcrud.com/api/596c9e26cd634ccd802fccf0042d84cb';
-    const BOARD_ID = '6ac652023c1f9403e86ac5db';
+    // Storage by Zapier store (persists longer than free crudcrud). Secret is in-page so this is casual-game grade only.
+    const ZAPIER_STORE_SECRET = '794D609C-0CF4-4A6C-B797-4E6DC266852C';
+    const BOARD_KEY = 'board';
+    const BOARD_URL = `https://store.zapier.com/api/records?secret=${encodeURIComponent(ZAPIER_STORE_SECRET)}`;
     const PLAYER_KEY = 'gatorPlayerV1';
     const ADMIN_PASS_SHA256 = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
     const NAME_ADJECTIVES = [
@@ -787,7 +789,7 @@
       const rows = publicRows();
       if (!rows.length) return '<p class="board-empty">No scores yet. Finish a run to post one.</p>';
       return `<ol class="board">${rows.map((row) => (
-        `<li><span class="board-name">${escapeHtml(row.name)}</span> <span class="board-score">${row.shown}</span><span class="board-diff">${escapeHtml((DIFFICULTY_PRESETS[row.difficulty] || {}).label || row.difficulty)}</span></li>`
+        `<li><span class="board-name">${escapeHtml(row.name)}</span> <span class="board-score">${row.shown}</span><span class="board-diff">${escapeHtml((DIFFICULTY_PRESETS[row.difficulty] || {}).label || row.difficulty)}${row.level ? ` · L${row.level}` : ''}</span></li>`
       )).join('')}</ol>`;
     }
 
@@ -803,20 +805,38 @@
       renderOpsRows();
     }
 
-    async function fetchBoard() {
-      const res = await fetch(`${BOARD_API}/boards/${BOARD_ID}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('board');
-      const data = await res.json();
-      if (!data || typeof data !== 'object' || Array.isArray(data.names) === false) {
-        throw new Error('board');
+    function normalizeBoard(raw) {
+      let data = raw;
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch (err) { return null; }
       }
-      boardOnline = true;
-      boardCache = {
+      if (!data || typeof data !== 'object') return null;
+      return {
         names: Array.isArray(data.names) ? data.names : [],
         rows: Array.isArray(data.rows) ? data.rows : [],
         rev: data.rev || 0,
         write: data.write || '',
       };
+    }
+
+    async function fetchBoard() {
+      const res = await fetch(`${BOARD_URL}&key=${encodeURIComponent(BOARD_KEY)}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('board');
+      const payload = await res.json();
+      let data = normalizeBoard(payload && payload[BOARD_KEY]);
+      if (!data) {
+        // First load or wiped key: seed an empty board.
+        const seed = { names: [], rows: [], rev: 0, write: '' };
+        const seedRes = await fetch(BOARD_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ [BOARD_KEY]: seed }),
+        });
+        if (!seedRes.ok) throw new Error('board');
+        data = seed;
+      }
+      boardOnline = true;
+      boardCache = data;
       renderBoards();
       return boardCache;
     }
@@ -838,14 +858,16 @@
         });
         next.rev = (current.rev || 0) + 1;
         next.write = write;
-        const res = await fetch(`${BOARD_API}/boards/${BOARD_ID}`, {
-          method: 'PUT',
+        const res = await fetch(BOARD_URL, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            names: next.names,
-            rows: next.rows,
-            rev: next.rev,
-            write,
+            [BOARD_KEY]: {
+              names: next.names,
+              rows: next.rows,
+              rev: next.rev,
+              write,
+            },
           }),
         });
         if (!res.ok) continue;
@@ -915,16 +937,14 @@
     const playerReady = ensurePlayer();
 
     function recordScore() {
-      const gen = scoreGen;
-      if (recordScore.postedGen === gen) return;
       if (!(state.score > 0)) return;
-      recordScore.postedGen = gen;
-      const payload = { difficulty: state.difficulty, score: state.score };
+      const payload = {
+        difficulty: state.difficulty,
+        score: state.score,
+        level: state.level,
+      };
       playerReady.then(async () => {
-        if (!player || !player.name) {
-          if (recordScore.postedGen === gen) recordScore.postedGen = -1;
-          return;
-        }
+        if (!player || !player.name) return;
         const ok = await mutateBoard((board) => {
           if (!board.names.includes(player.name)) board.names.push(player.name);
           let row = board.rows.find((item) => item.name === player.name && item.difficulty === payload.difficulty);
@@ -933,25 +953,35 @@
               name: player.name,
               difficulty: payload.difficulty,
               best: payload.score,
+              level: payload.level,
               penalty: 0,
             });
-          } else if (payload.score > (row.best || 0)) {
+          } else {
+            // Live class board: always show the latest score, not a lifetime best.
             row.best = payload.score;
+            row.level = payload.level;
           }
           return board;
         });
-        if (!ok && recordScore.postedGen === gen) {
-          recordScore.postedGen = -1;
-          showToast('Could not save that score.', 1400);
-        }
+        if (!ok) showToast('Could not save that score.', 1400);
       }).catch(() => {
-        if (recordScore.postedGen === gen) recordScore.postedGen = -1;
         showToast('Could not save that score.', 1400);
       });
     }
 
+    function clearLiveScore() {
+      const difficulty = state.difficulty;
+      const name = player && player.name;
+      if (!name) return;
+      mutateBoard((board) => {
+        board.rows = board.rows.filter((row) => !(row.name === name && row.difficulty === difficulty));
+        return board;
+      }).catch(() => {});
+    }
+
     function nextRun() {
       scoreGen += 1;
+      clearLiveScore();
     }
 
     async function sha256hex(text) {
@@ -1020,7 +1050,6 @@
     }
 
     function resetGame({ practice = false, difficulty } = {}) {
-      recordScore();
       nextRun();
       state.practice = practice;
       if (difficulty && DIFFICULTY_PRESETS[difficulty]) state.difficulty = difficulty;
@@ -1297,6 +1326,9 @@
       const questNum = Math.floor((levelJustBeat - 1) / 4) + 1;
       const treat = getCurrentTreat(levelJustBeat);
 
+      // Live class board: refresh the shared list after every level.
+      recordScore();
+
       // Quick flow for non-quest-end levels: short toast + auto-advance.
       if (!isQuestEnd) {
         state.running = false;
@@ -1308,7 +1340,6 @@
 
       // Quest victory screens every 4 levels
       if (isFinal) {
-        recordScore();
         showSetVictory({
           treatEmoji: treat.emoji,
           title: `🎊 ALL 100 LEVELS COMPLETE! 🎊`,
