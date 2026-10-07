@@ -21,19 +21,121 @@
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      padding: 18px 18px 22px;
-      gap: 14px;
+      padding: 12px 12px 16px;
+      gap: 10px;
+      min-height: 0;
     }
 
     #hud {
-      width: min(980px, 96vw);
+      width: min(1480px, 98vw);
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
       justify-content: center;
       align-items: center;
       user-select: none;
+      flex-shrink: 0;
     }
+
+    #play-row {
+      width: min(1480px, 98vw);
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    .side-panel {
+      width: clamp(200px, 18vw, 280px);
+      flex: 0 0 clamp(200px, 18vw, 280px);
+      background: rgba(255,255,255,0.94);
+      border: 2px solid rgba(0,0,0,0.12);
+      border-radius: 18px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .side-panel h2 {
+      font-size: 15px;
+      padding: 12px 12px 8px;
+      color: #2d5016;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      flex-shrink: 0;
+    }
+    .side-panel .panel-sub {
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0.7;
+      display: block;
+      margin-top: 2px;
+    }
+
+    #api-log-list {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .api-entry {
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px;
+      padding: 7px 8px;
+      margin-bottom: 6px;
+      background: rgba(255,255,255,0.7);
+    }
+    .api-entry.ok { border-left: 4px solid #4CAF50; }
+    .api-entry.bad { border-left: 4px solid #c62828; }
+    .api-entry .api-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      font-weight: 800;
+      margin-bottom: 3px;
+    }
+    .api-entry .api-method { color: #173014; }
+    .api-entry .api-status { opacity: 0.85; }
+    .api-entry .api-detail {
+      color: #243b1d;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .api-empty {
+      opacity: 0.65;
+      font-size: 13px;
+      padding: 8px;
+      font-family: inherit;
+    }
+
+    #live-board-panel .you-are {
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #173014;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      flex-shrink: 0;
+      background: rgba(76, 175, 80, 0.12);
+    }
+    #live-board-panel .you-are span { color: #2d5016; }
+    #live-board-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding: 8px 10px 12px;
+    }
+    #live-board-scroll .board {
+      margin: 0;
+      max-width: none;
+      padding-left: 18px;
+    }
+    #live-board-scroll .board li { font-size: 14px; }
+    #live-board-scroll .board-empty { font-size: 13px; }
 
     .pill {
       background: rgba(255,255,255,0.92);
@@ -66,14 +168,18 @@
     }
 
     #stage {
-      width: min(980px, 96vw);
+      flex: 1 1 auto;
+      width: auto;
+      max-width: min(980px, 58vw);
       aspect-ratio: 16 / 9;
+      max-height: 100%;
       background: rgba(255,255,255,0.25);
       border-radius: 22px;
       box-shadow: 0 12px 28px rgba(0,0,0,0.18);
       border: 4px solid rgba(255,255,255,0.55);
       position: relative;
       overflow: hidden;
+      align-self: center;
     }
 
     canvas {
@@ -254,9 +360,25 @@
     button.danger:hover { background: #732f29; }
 
     #bottom {
-      width: min(980px, 96vw);
+      width: min(1480px, 98vw);
       display: flex;
       justify-content: center;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 1100px) {
+      #play-row { flex-wrap: wrap; }
+      #stage {
+        order: -1;
+        width: min(980px, 96vw);
+        max-width: none;
+        max-height: none;
+      }
+      .side-panel {
+        width: calc(50% - 6px);
+        flex: 1 1 calc(50% - 6px);
+        max-height: 220px;
+      }
     }
 
     #toast {
@@ -335,7 +457,6 @@
     <div id="hud">
       <div class="pill"><span>🏁</span><span id="hud-level">Level: 1 / 12</span></div>
       <div class="pill"><span>🐊</span><span id="hud-mode">Aim: Left</span></div>
-      <div class="pill"><span>🏷️</span><span id="hud-player">...</span></div>
       <div class="pill"><span>🎯</span><span id="hud-score">Score: 0</span></div>
       <div class="pill"><span>⚡</span><span id="hud-streak">Streak: 0</span></div>
       <div class="pill"><span>❤️</span><span id="hud-lives">Lives: ❤❤❤</span></div>
@@ -354,45 +475,57 @@
       </div>
     </div>
 
-    <div id="stage">
-      <div id="toast"></div>
-      <canvas id="game" width="1280" height="720"></canvas>
-      <div id="overlay">
-        <div class="card">
-          <h1>🐊 Swamp Treat Defense 🍬</h1>
-          <p class="who">You are <b data-player-name>...</b></p>
-          <p>
-            Keep your <b>thumb on Space</b> and your <b>index fingers on F and J</b>.
-            Enemies rush in from the sides — don’t look down!
-          </p>
-          <div class="big-keys" aria-label="Controls">
-            <div class="key" id="key-f">F<small>aim left (flies 🪰)</small></div>
-            <div class="key space" id="key-space">SPACE<small>fling water 💦</small></div>
-            <div class="key" id="key-j">J<small>aim right (jaguars 🐆)</small></div>
+    <div id="play-row">
+      <aside id="api-log-panel" class="side-panel" aria-label="Storage API call log">
+        <h2>Storage API log<span class="panel-sub">Live Zapier requests</span></h2>
+        <div id="api-log-list"><p class="api-empty">Waiting for board calls…</p></div>
+      </aside>
+
+      <div id="stage">
+        <div id="toast"></div>
+        <canvas id="game" width="1280" height="720"></canvas>
+        <div id="overlay">
+          <div class="card">
+            <h1>🐊 Swamp Treat Defense 🍬</h1>
+            <p>
+              Keep your <b>thumb on Space</b> and your <b>index fingers on F and J</b>.
+              Enemies rush in from the sides — don’t look down!
+            </p>
+            <div class="big-keys" aria-label="Controls">
+              <div class="key" id="key-f">F<small>aim left (flies 🪰)</small></div>
+              <div class="key space" id="key-space">SPACE<small>fling water 💦</small></div>
+              <div class="key" id="key-j">J<small>aim right (jaguars 🐆)</small></div>
+            </div>
+            <p>
+              Beat <b>100 levels</b> across <b>25 treat quests</b>. Fill the meter to earn each treat!
+              If enemies reach you, you lose hearts.
+            </p>
+            <div class="difficulty-row">
+              <label for="start-difficulty">Difficulty</label>
+              <select id="start-difficulty" class="difficulty-select" aria-label="Difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+                <option value="extreme">Extreme</option>
+              </select>
+            </div>
+            <div class="btn-row">
+              <button id="start-btn">Start</button>
+            </div>
+            <p style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
+              Tip: Press <b>F</b>/<b>J</b> to aim, <b>Space</b> to fling. Every 4 levels your gator earns a bigger treat!
+            </p>
           </div>
-          <p>
-            Beat <b>100 levels</b> across <b>25 treat quests</b>. Fill the meter to earn each treat!
-            If enemies reach you, you lose hearts.
-          </p>
-          <div class="difficulty-row">
-            <label for="start-difficulty">Difficulty</label>
-            <select id="start-difficulty" class="difficulty-select" aria-label="Difficulty">
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-              <option value="extreme">Extreme</option>
-            </select>
-          </div>
-          <div class="btn-row">
-            <button id="start-btn">Start</button>
-          </div>
-          <p style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
-            Tip: Press <b>F</b>/<b>J</b> to aim, <b>Space</b> to fling. Every 4 levels your gator earns a bigger treat!
-          </p>
-          <h2 style="margin-top: 16px; font-size: 20px; color: #2d5016;">Scores</h2>
-          <div data-board></div>
         </div>
       </div>
+
+      <aside id="live-board-panel" class="side-panel" aria-label="Live leaderboard">
+        <h2>Leaderboard<span class="panel-sub">Updates live</span></h2>
+        <div class="you-are">You are <span data-player-name>...</span></div>
+        <div id="live-board-scroll">
+          <div data-board></div>
+        </div>
+      </aside>
     </div>
 
     <div id="bottom">
@@ -438,8 +571,8 @@
     const hudLevel = document.getElementById('hud-level');
     const hudMode = document.getElementById('hud-mode');
     const hudScore = document.getElementById('hud-score');
-    const hudPlayer = document.getElementById('hud-player');
     const hudStreak = document.getElementById('hud-streak');
+    const apiLogList = document.getElementById('api-log-list');
     const hudLives = document.getElementById('hud-lives');
     const hudTreat = document.getElementById('hud-treat');
     const hudTreatIcon = document.getElementById('hud-treat-icon');
@@ -795,7 +928,6 @@
 
     function updatePlayerLabels() {
       const name = player && player.name ? player.name : '...';
-      if (hudPlayer) hudPlayer.textContent = name;
       document.querySelectorAll('[data-player-name]').forEach((el) => { el.textContent = name; });
     }
 
@@ -803,6 +935,98 @@
       document.querySelectorAll('[data-board]').forEach((el) => { el.innerHTML = boardMarkup(); });
       updatePlayerLabels();
       renderOpsRows();
+    }
+
+    const API_LOG_MAX = 40;
+    const apiLogEntries = [];
+
+    function summarizeBoardValue(board) {
+      if (!board || typeof board !== 'object') return String(board ?? '');
+      const rows = Array.isArray(board.rows) ? board.rows.length : 0;
+      const names = Array.isArray(board.names) ? board.names.length : 0;
+      const top = (Array.isArray(board.rows) ? board.rows : [])
+        .map((row) => ({ ...row, shown: Math.max(0, (row.best || 0) - (row.penalty || 0)) }))
+        .filter((row) => row.shown > 0)
+        .sort((a, b) => b.shown - a.shown)
+        .slice(0, 3)
+        .map((row) => `${row.name}:${row.shown}`)
+        .join(', ');
+      return `names=${names} scores=${rows} rev=${board.rev || 0}${top ? ` top=${top}` : ''}`;
+    }
+
+    function describeBoardBody(body) {
+      if (!body) return '(no body)';
+      try {
+        const parsed = typeof body === 'string' ? JSON.parse(body) : body;
+        const board = parsed && parsed[BOARD_KEY] !== undefined ? parsed[BOARD_KEY] : parsed;
+        return summarizeBoardValue(board);
+      } catch (err) {
+        const text = String(body);
+        return text.length > 140 ? `${text.slice(0, 140)}…` : text;
+      }
+    }
+
+    function renderApiLog() {
+      if (!apiLogList) return;
+      if (!apiLogEntries.length) {
+        apiLogList.innerHTML = '<p class="api-empty">Waiting for board calls…</p>';
+        return;
+      }
+      apiLogList.innerHTML = apiLogEntries.map((entry) => `
+        <div class="api-entry ${entry.ok ? 'ok' : 'bad'}">
+          <div class="api-meta">
+            <span class="api-method">${escapeHtml(entry.method)} ${escapeHtml(entry.label)}</span>
+            <span class="api-status">${escapeHtml(String(entry.status))} · ${entry.ms}ms</span>
+          </div>
+          <div class="api-detail">${escapeHtml(entry.detail)}</div>
+        </div>
+      `).join('');
+    }
+
+    function pushApiLog(entry) {
+      apiLogEntries.unshift(entry);
+      if (apiLogEntries.length > API_LOG_MAX) apiLogEntries.length = API_LOG_MAX;
+      renderApiLog();
+    }
+
+    async function boardFetch(url, options = {}, label = 'board') {
+      const method = (options.method || 'GET').toUpperCase();
+      const started = performance.now();
+      const sent = options.body ? describeBoardBody(options.body) : (label === 'board' ? 'read board' : label);
+      try {
+        const res = await fetch(url, options);
+        let responseDetail = sent;
+        try {
+          const clone = res.clone();
+          const json = await clone.json();
+          if (json && json[BOARD_KEY] !== undefined) {
+            responseDetail = `${method === 'GET' ? 'got' : 'sent'} ${summarizeBoardValue(json[BOARD_KEY])}`;
+          } else if (options.body) {
+            responseDetail = `sent ${sent}`;
+          }
+        } catch (err) {
+          responseDetail = options.body ? `sent ${sent}` : 'no JSON body';
+        }
+        pushApiLog({
+          method,
+          label,
+          status: res.status,
+          ms: Math.round(performance.now() - started),
+          ok: res.ok,
+          detail: responseDetail,
+        });
+        return res;
+      } catch (err) {
+        pushApiLog({
+          method,
+          label,
+          status: 'ERR',
+          ms: Math.round(performance.now() - started),
+          ok: false,
+          detail: String(err && err.message ? err.message : err),
+        });
+        throw err;
+      }
     }
 
     function normalizeBoard(raw) {
@@ -820,18 +1044,18 @@
     }
 
     async function fetchBoard() {
-      const res = await fetch(`${BOARD_URL}&key=${encodeURIComponent(BOARD_KEY)}`, { cache: 'no-store' });
+      const res = await boardFetch(`${BOARD_URL}&key=${encodeURIComponent(BOARD_KEY)}`, { cache: 'no-store' }, 'board');
       if (!res.ok) throw new Error('board');
       const payload = await res.json();
       let data = normalizeBoard(payload && payload[BOARD_KEY]);
       if (!data) {
         // First load or wiped key: seed an empty board.
         const seed = { names: [], rows: [], rev: 0, write: '' };
-        const seedRes = await fetch(BOARD_URL, {
+        const seedRes = await boardFetch(BOARD_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ [BOARD_KEY]: seed }),
-        });
+        }, 'seed');
         if (!seedRes.ok) throw new Error('board');
         data = seed;
       }
@@ -858,7 +1082,7 @@
         });
         next.rev = (current.rev || 0) + 1;
         next.write = write;
-        const res = await fetch(BOARD_URL, {
+        const res = await boardFetch(BOARD_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -869,7 +1093,7 @@
               write,
             },
           }),
-        });
+        }, 'update');
         if (!res.ok) continue;
         const saved = await fetchBoard();
         if (saved.write === write) return true;
@@ -1272,12 +1496,9 @@
           <div class="btn-row" style="margin-top: 18px;">
             <button id="restart-btn">Retry Quest ${questNum} (Level ${questStartLevel})</button>
           </div>
-          <h2 style="margin-top: 16px; font-size: 20px; color: #2d5016;">Scores</h2>
-          <div data-board></div>
         </div>
       `;
       overlay.classList.remove('hidden');
-      renderBoards();
 
       const restart = overlay.querySelector('#restart-btn');
       if (restart) restart.addEventListener('click', () => {
@@ -1306,12 +1527,9 @@
             <button id="next-btn">${nextLabel}</button>
           </div>
           <p style="margin-top: 12px;"><a href="#" id="restart-link" style="font-size: 13px; color: #666; text-decoration: underline;">or restart from level 1</a></p>
-          <h2 style="margin-top: 16px; font-size: 20px; color: #2d5016;">Scores</h2>
-          <div data-board></div>
         </div>
       `;
       overlay.classList.remove('hidden');
-      renderBoards();
 
       const nextBtn = overlay.querySelector('#next-btn');
       const restartLink = overlay.querySelector('#restart-link');
@@ -1797,7 +2015,7 @@
         boardOnline = false;
         renderBoards();
       });
-    }, 12000);
+    }, 2500);
     overlay.addEventListener('click', (e) => {
       // Clicking the dark backdrop shouldn't restart by accident.
       if (e.target === overlay) {
