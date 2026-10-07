@@ -207,6 +207,52 @@
       color: #243b1d;
     }
 
+    .board {
+      text-align: left;
+      margin: 8px auto 0;
+      padding-left: 22px;
+      max-width: 460px;
+    }
+    .board li { margin: 4px 0; font-size: 16px; }
+    .board-score { font-weight: 900; }
+    .board-diff { opacity: 0.7; font-size: 13px; margin-left: 6px; }
+    .board-empty { font-size: 15px; opacity: 0.75; margin: 6px 0; }
+    .who { font-size: 16px; margin: 8px 0 0; }
+
+    #ops {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(0,0,0,0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    #ops.hidden, #ops .hidden { display: none; }
+    #ops .card { max-height: min(86vh, 760px); overflow: auto; text-align: left; }
+    #ops h1, #ops h2 { text-align: center; }
+    #ops h2 { font-size: 18px; margin: 16px 0 8px; color: #2d5016; }
+    .ops-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 8px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    .ops-row input[type="number"], #ops-pass {
+      font: inherit;
+      font-weight: 700;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.22);
+    }
+    .ops-row input[type="number"] { width: 88px; }
+    button.danger { background: #8d3a32; }
+    button.danger:hover { background: #732f29; }
+
     #bottom {
       width: min(980px, 96vw);
       display: flex;
@@ -289,6 +335,7 @@
     <div id="hud">
       <div class="pill"><span>🏁</span><span id="hud-level">Level: 1 / 12</span></div>
       <div class="pill"><span>🐊</span><span id="hud-mode">Aim: Left</span></div>
+      <div class="pill"><span>🏷️</span><span id="hud-player">...</span></div>
       <div class="pill"><span>🎯</span><span id="hud-score">Score: 0</span></div>
       <div class="pill"><span>⚡</span><span id="hud-streak">Streak: 0</span></div>
       <div class="pill"><span>❤️</span><span id="hud-lives">Lives: ❤❤❤</span></div>
@@ -313,6 +360,7 @@
       <div id="overlay">
         <div class="card">
           <h1>🐊 Swamp Treat Defense 🍬</h1>
+          <p class="who">You are <b data-player-name>...</b></p>
           <p>
             Keep your <b>thumb on Space</b> and your <b>index fingers on F and J</b>.
             Enemies rush in from the sides — don’t look down!
@@ -341,6 +389,8 @@
           <p style="font-size: 14px; opacity: 0.8; margin-top: 10px;">
             Tip: Press <b>F</b>/<b>J</b> to aim, <b>Space</b> to fling. Every 4 levels your gator earns a bigger treat!
           </p>
+          <h2 style="margin-top: 16px; font-size: 20px; color: #2d5016;">Scores</h2>
+          <div data-board></div>
         </div>
       </div>
     </div>
@@ -350,6 +400,27 @@
         <div class="key" id="key-f-2">F<small>flies 🪰</small></div>
         <div class="key space" id="key-space-2">SPACE<small>fling 💦</small></div>
         <div class="key" id="key-j-2">J<small>jaguars 🐆</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ops" class="hidden" hidden>
+    <div class="card">
+      <h1>Score board controls</h1>
+      <form id="ops-login">
+        <p>Password</p>
+        <div class="ops-row">
+          <input id="ops-pass" type="password" autocomplete="current-password" />
+          <button type="submit">Unlock</button>
+        </div>
+      </form>
+      <div id="ops-tools" class="hidden">
+        <div class="btn-row" style="justify-content: flex-start;">
+          <button id="ops-clear" type="button" class="danger">Clear board</button>
+          <button id="ops-close" type="button" class="secondary">Close</button>
+        </div>
+        <h2>Dock points</h2>
+        <div id="ops-rows"></div>
       </div>
     </div>
   </div>
@@ -367,6 +438,7 @@
     const hudLevel = document.getElementById('hud-level');
     const hudMode = document.getElementById('hud-mode');
     const hudScore = document.getElementById('hud-score');
+    const hudPlayer = document.getElementById('hud-player');
     const hudStreak = document.getElementById('hud-streak');
     const hudLives = document.getElementById('hud-lives');
     const hudTreat = document.getElementById('hud-treat');
@@ -631,7 +703,316 @@
     const shots = [];
     const particles = [];
 
+    const BOARD_API = 'https://crudcrud.com/api/ed727fe3bf9746cc94b041f0f2121972';
+    const BOARD_ID = '6abe9c1278122c03e8778fa0';
+    const PLAYER_KEY = 'gatorPlayerV1';
+    const ADMIN_PASS_SHA256 = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
+    const NAME_ADJECTIVES = [
+      'Blue','Gold','Mint','Pink','Silver','Coral','Sunny','Mossy','Tiny','Brave',
+      'Swift','Jumbo','Cosmic','Merry','Fuzzy','Amber','Lilac','Cocoa','Icy','Ruby',
+      'Lemon','Neon','Quiet','Wild','Royal','Misty','Pepper','Honey','Lucky','Snowy',
+      'Aqua','Azure','Berry','Bold','Bright','Bubbly','Butter','Candy','Cedar','Cherry',
+      'Clever','Cloudy','Cozy','Crisp','Crystal','Dandy','Daring','Dawn','Dizzy','Dusky',
+      'Eager','Emerald','Fancy','Feisty','Fizz','Fluffy','Forest','Frosty','Gentle','Giant',
+      'Gleaming','Glowy','Golden','Grace','Happy','Hazel','Hidden','Hasty','Indigo','Ivory',
+      'Jazzy','Jolly','Jungle','Keen','Kind','Leafy','Lime','Lively','Magic','Maple',
+      'Mellow','Mighty','Mirth','Moon','Murky','Nimble','Noble','Olive','Orange','Peachy',
+      'Perky','Plucky','Polar','Pretty','Proud','Pumpkin','Purple','Quick','Radiant','Rainy',
+      'Rapid','River','Rosy','Rusty','Sage','Sandy','Sapphire','Scarlet','Shiny','Silent',
+      'Silly','Sleek','Sly','Smoky','Snappy','Soft','Spark','Speedy','Spicy','Spooky',
+      'Spry','Starry','Steady','Storm','Sugar','Sweet','Teal','Tide','Turbo','Velvet',
+      'Vivid','Warm','Wavy','Windy','Witty','Zesty','Zippy','Zany','Copper','Pearl',
+    ];
+    const NAME_ANIMALS = [
+      'Penguin','Otter','Jaguar','Gator','Frog','Heron','Turtle','Newt','Duck','Panda',
+      'Fox','Moose','Robin','Bison','Koala','Quail','Whale','Lynx','Puffin','Badger',
+      'Finch','Beaver','Crane','Dolphin','Ibis','Llama','Falcon','Gecko','Marlin','Plover',
+      'Alligator','Alpaca','Antelope','Armadillo','Axolotl','Baboon','Barracuda','Bat','Bear','Bee',
+      'Beetle','Bluebird','Boa','Bobcat','Butterfly','Caiman','Camel','Cardinal','Catfish','Chameleon',
+      'Cheetah','Chickadee','Chipmunk','Cobra','Condor','Coot','Coyote','Cricket','Crocodile','Crow',
+      'Deer','Dingo','Dove','Dragonfly','Eagle','Eel','Egret','Elephant','Elk','Emu',
+      'Ferret','Firefly','Flamingo','Gazelle','Giraffe','Goose','Gopher','Gorilla','Grebe','Hare',
+      'Hawk','Hedgehog','Hippo','Hummingbird','Hyena','Iguana','Impala','Jackal','Jay','Jellyfish',
+      'Kangaroo','Kingfisher','Kite','Kiwi','Lemur','Leopard','Lion','Lizard','Lobster','Magpie',
+      'Manatee','Manta','Meerkat','Minnow','Mole','Monkey','Moth','Mouse','Narwhal','Nighthawk',
+      'Ocelot','Octopus','Orca','Oriole','Osprey','Owl','Ox','Oyster','Parrot','Pelican',
+      'Pheasant','Piglet','Pika','Platypus','Porcupine','Possum','Python','Rabbit','Raccoon','Raven',
+      'Ray','Reindeer','Salamander','Salmon','Seal','Seahorse','Shark','Skunk','Sloth','Snail',
+      'Sparrow','Squirrel','Starling','Stingray','Stork','Swan','Tamarin','Tanager','Tapir','Tern',
+      'Tiger','Toad','Toucan','Trout','Turkey','Viper','Vole','Vulture','Walrus','Warbler',
+      'Weasel','Wombat','Woodpecker','Wren','Yak','Zebra','Zebu','Marten','Mongoose','Nuthatch',
+    ];
+
+    let boardCache = { names: [], rows: [], rev: 0 };
+    let boardQueue = Promise.resolve();
+    let player = null;
+    let scoreGen = 0;
+    let opsUnlocked = false;
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[ch]));
+    }
+
+    function shownScore(row) {
+      return Math.max(0, (row.best || 0) - (row.penalty || 0));
+    }
+
+    function randomPairName(names) {
+      const taken = new Set(names);
+      const adj = NAME_ADJECTIVES[Math.floor(Math.random() * NAME_ADJECTIVES.length)];
+      const animal = NAME_ANIMALS[Math.floor(Math.random() * NAME_ANIMALS.length)];
+      const base = `${adj} ${animal}`;
+      let n = 1;
+      let name = base;
+      while (taken.has(name)) {
+        n += 1;
+        name = `${base} ${n}`;
+      }
+      return name;
+    }
+
+    function publicRows() {
+      return boardCache.rows
+        .map((row) => ({ ...row, shown: shownScore(row) }))
+        .filter((row) => row.shown > 0)
+        .sort((a, b) => b.shown - a.shown || a.name.localeCompare(b.name))
+        .slice(0, 10);
+    }
+
+    function boardMarkup() {
+      const rows = publicRows();
+      if (!rows.length) return '<p class="board-empty">No scores yet.</p>';
+      return `<ol class="board">${rows.map((row) => (
+        `<li><span class="board-name">${escapeHtml(row.name)}</span> <span class="board-score">${row.shown}</span><span class="board-diff">${escapeHtml((DIFFICULTY_PRESETS[row.difficulty] || {}).label || row.difficulty)}</span></li>`
+      )).join('')}</ol>`;
+    }
+
+    function updatePlayerLabels() {
+      const name = player && player.name ? player.name : '...';
+      if (hudPlayer) hudPlayer.textContent = name;
+      document.querySelectorAll('[data-player-name]').forEach((el) => { el.textContent = name; });
+    }
+
+    function renderBoards() {
+      document.querySelectorAll('[data-board]').forEach((el) => { el.innerHTML = boardMarkup(); });
+      updatePlayerLabels();
+      renderOpsRows();
+    }
+
+    async function fetchBoard() {
+      const res = await fetch(`${BOARD_API}/boards/${BOARD_ID}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('board');
+      const data = await res.json();
+      boardCache = {
+        names: Array.isArray(data.names) ? data.names : [],
+        rows: Array.isArray(data.rows) ? data.rows : [],
+        write: data.write || '',
+      };
+      renderBoards();
+      return boardCache;
+    }
+
+    function mutateBoard(mutator) {
+      const run = boardQueue.then(() => mutateBoardOnce(mutator));
+      boardQueue = run.then(() => {}, () => {});
+      return run;
+    }
+
+    async function mutateBoardOnce(mutator) {
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const current = await fetchBoard();
+        const write = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        const next = mutator({
+          names: current.names.slice(),
+          rows: current.rows.map((row) => ({ ...row })),
+          rev: current.rev || 0,
+        });
+        next.rev = (current.rev || 0) + 1;
+        next.write = write;
+        const res = await fetch(`${BOARD_API}/boards/${BOARD_ID}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            names: next.names,
+            rows: next.rows,
+            rev: next.rev,
+            write,
+          }),
+        });
+        if (!res.ok) continue;
+        const saved = await fetchBoard();
+        if (saved.write === write) return true;
+      }
+      return false;
+    }
+
+    async function ensurePlayer() {
+      try {
+        const raw = localStorage.getItem(PLAYER_KEY);
+        if (raw) player = JSON.parse(raw);
+      } catch (err) {
+        player = null;
+      }
+      updatePlayerLabels();
+      try {
+        await fetchBoard();
+      } catch (err) {
+        if (!player || !player.name) {
+          player = { name: randomPairName([]) };
+          localStorage.setItem(PLAYER_KEY, JSON.stringify(player));
+          updatePlayerLabels();
+        }
+        showToast('Score board is offline. Your name is saved on this computer.', 1600);
+        return;
+      }
+      if (player && player.name) {
+        try {
+          if (!boardCache.names.includes(player.name)) {
+            const wanted = player.name;
+            await mutateBoard((board) => {
+              if (!board.names.includes(wanted)) board.names.push(wanted);
+              return board;
+            });
+          }
+        } catch (err) {
+          showToast('Score board is offline. Your name is saved on this computer.', 1600);
+        }
+        updatePlayerLabels();
+        return;
+      }
+      let assigned = '';
+      try {
+        const ok = await mutateBoard((board) => {
+          assigned = randomPairName(board.names);
+          board.names.push(assigned);
+          return board;
+        });
+        if (!assigned) assigned = randomPairName(boardCache.names || []);
+        player = { name: assigned };
+        localStorage.setItem(PLAYER_KEY, JSON.stringify(player));
+        updatePlayerLabels();
+        if (!ok) showToast('Score board is offline. Your name is saved on this computer.', 1600);
+      } catch (err) {
+        if (!assigned) assigned = randomPairName(boardCache.names || []);
+        player = { name: assigned };
+        localStorage.setItem(PLAYER_KEY, JSON.stringify(player));
+        updatePlayerLabels();
+        showToast('Score board is offline. Your name is saved on this computer.', 1600);
+      }
+    }
+
+    const playerReady = ensurePlayer();
+
+    function recordScore() {
+      const gen = scoreGen;
+      if (recordScore.postedGen === gen) return;
+      if (!(state.score > 0)) return;
+      recordScore.postedGen = gen;
+      const payload = { difficulty: state.difficulty, score: state.score };
+      playerReady.then(async () => {
+        if (!player || !player.name) {
+          if (recordScore.postedGen === gen) recordScore.postedGen = -1;
+          return;
+        }
+        const ok = await mutateBoard((board) => {
+          if (!board.names.includes(player.name)) board.names.push(player.name);
+          let row = board.rows.find((item) => item.name === player.name && item.difficulty === payload.difficulty);
+          if (!row) {
+            board.rows.push({
+              name: player.name,
+              difficulty: payload.difficulty,
+              best: payload.score,
+              penalty: 0,
+            });
+          } else if (payload.score > (row.best || 0)) {
+            row.best = payload.score;
+          }
+          return board;
+        });
+        if (!ok && recordScore.postedGen === gen) {
+          recordScore.postedGen = -1;
+          showToast('Could not save that score.', 1400);
+        }
+      }).catch(() => {
+        if (recordScore.postedGen === gen) recordScore.postedGen = -1;
+        showToast('Could not save that score.', 1400);
+      });
+    }
+
+    function nextRun() {
+      scoreGen += 1;
+    }
+
+    async function sha256hex(text) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function renderOpsRows() {
+      const el = document.getElementById('ops-rows');
+      if (!el || !opsUnlocked) return;
+      if (el.contains(document.activeElement)) return;
+      const rows = boardCache.rows
+        .map((row) => ({ ...row, shown: shownScore(row) }))
+        .sort((a, b) => b.shown - a.shown || a.name.localeCompare(b.name));
+      if (!rows.length) {
+        el.innerHTML = '<p class="board-empty">No scores on the board.</p>';
+        return;
+      }
+      el.innerHTML = rows.map((row) => `
+        <div class="ops-row">
+          <span><b>${escapeHtml(row.name)}</b> · ${escapeHtml((DIFFICULTY_PRESETS[row.difficulty] || {}).label || row.difficulty)} · ${row.shown}</span>
+          <input type="number" min="1" step="1" value="10" aria-label="Points to dock from ${escapeHtml(row.name)}" />
+          <button type="button" data-dock data-name="${escapeHtml(row.name)}" data-diff="${escapeHtml(row.difficulty)}">Dock</button>
+        </div>
+      `).join('');
+      el.querySelectorAll('[data-dock]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const amount = Math.round(Number(btn.parentElement.querySelector('input').value));
+          if (!(amount > 0)) return;
+          const name = btn.getAttribute('data-name');
+          const difficulty = btn.getAttribute('data-diff');
+          btn.disabled = true;
+          const ok = await mutateBoard((board) => {
+            const row = board.rows.find((item) => item.name === name && item.difficulty === difficulty);
+            if (row) row.penalty = (row.penalty || 0) + amount;
+            return board;
+          });
+          btn.disabled = false;
+          if (!ok) showToast('Could not update that score.', 1400);
+        });
+      });
+    }
+
+    function unlockOps() {
+      opsUnlocked = true;
+      const login = document.getElementById('ops-login');
+      const tools = document.getElementById('ops-tools');
+      if (login) login.classList.add('hidden');
+      if (tools) tools.classList.remove('hidden');
+      renderOpsRows();
+    }
+
+    function openOps() {
+      const ops = document.getElementById('ops');
+      if (!ops) return;
+      ops.hidden = false;
+      ops.classList.remove('hidden');
+      if (sessionStorage.getItem('gatorOps') === '1') unlockOps();
+    }
+
+    function closeOps() {
+      const ops = document.getElementById('ops');
+      if (!ops) return;
+      ops.hidden = true;
+      ops.classList.add('hidden');
+    }
+
     function resetGame({ practice = false, difficulty } = {}) {
+      recordScore();
+      nextRun();
       state.practice = practice;
       if (difficulty && DIFFICULTY_PRESETS[difficulty]) state.difficulty = difficulty;
       state.score = 0;
@@ -835,6 +1216,7 @@
       state.running = false;
       state.win = !!win;
       state.lose = !win;
+      recordScore();
 
       const treat = getCurrentTreat(state.level);
       const questNum = Math.floor((state.level - 1) / 4) + 1;
@@ -852,12 +1234,16 @@
           <div class="btn-row" style="margin-top: 18px;">
             <button id="restart-btn">Retry Quest ${questNum} (Level ${questStartLevel})</button>
           </div>
+          <h2 style="margin-top: 16px; font-size: 20px; color: #2d5016;">Scores</h2>
+          <div data-board></div>
         </div>
       `;
       overlay.classList.remove('hidden');
+      renderBoards();
 
       const restart = overlay.querySelector('#restart-btn');
       if (restart) restart.addEventListener('click', () => {
+        nextRun();
         state.score = 0;
         state.elapsed = 0;
         state.win = false;
@@ -882,9 +1268,12 @@
             <button id="next-btn">${nextLabel}</button>
           </div>
           <p style="margin-top: 12px;"><a href="#" id="restart-link" style="font-size: 13px; color: #666; text-decoration: underline;">or restart from level 1</a></p>
+          <h2 style="margin-top: 16px; font-size: 20px; color: #2d5016;">Scores</h2>
+          <div data-board></div>
         </div>
       `;
       overlay.classList.remove('hidden');
+      renderBoards();
 
       const nextBtn = overlay.querySelector('#next-btn');
       const restartLink = overlay.querySelector('#restart-link');
@@ -910,6 +1299,7 @@
 
       // Quest victory screens every 4 levels
       if (isFinal) {
+        recordScore();
         showSetVictory({
           treatEmoji: treat.emoji,
           title: `🎊 ALL 100 LEVELS COMPLETE! 🎊`,
@@ -1283,6 +1673,8 @@
     }
 
     function onKeyDown(e) {
+      const tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       const k = e.key.toLowerCase();
       
       // Enter key clicks the primary button on overlay screens
@@ -1331,6 +1723,38 @@
     startBtn.addEventListener('click', () => resetGame({ practice: false }));
     if (hudDifficulty) hudDifficulty.addEventListener('change', () => trySetDifficulty(hudDifficulty.value));
     if (startDifficulty) startDifficulty.addEventListener('change', () => trySetDifficulty(startDifficulty.value));
+    const opsLogin = document.getElementById('ops-login');
+    const opsPass = document.getElementById('ops-pass');
+    const opsClear = document.getElementById('ops-clear');
+    const opsClose = document.getElementById('ops-close');
+    if (opsLogin) opsLogin.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const hex = await sha256hex(opsPass.value);
+      if (hex === ADMIN_PASS_SHA256) {
+        sessionStorage.setItem('gatorOps', '1');
+        opsPass.value = '';
+        unlockOps();
+      } else {
+        showToast('That password did not match.', 1000);
+      }
+    });
+    if (opsClear) opsClear.addEventListener('click', async () => {
+      const okToClear = window.confirm('Clear every score on the board? Assigned names stay, so people keep the name they already have.');
+      if (!okToClear) return;
+      opsClear.disabled = true;
+      const ok = await mutateBoard((board) => {
+        board.rows = [];
+        return board;
+      });
+      opsClear.disabled = false;
+      if (!ok) showToast('Could not clear the board.', 1400);
+    });
+    if (opsClose) opsClose.addEventListener('click', closeOps);
+    if (new URLSearchParams(location.search).get('panel') === '1' || location.hash === '#panel') openOps();
+    window.setInterval(() => {
+      if (document.hidden) return;
+      fetchBoard().catch(() => {});
+    }, 12000);
     overlay.addEventListener('click', (e) => {
       // Clicking the dark backdrop shouldn't restart by accident.
       if (e.target === overlay) {
