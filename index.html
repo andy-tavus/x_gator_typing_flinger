@@ -149,6 +149,12 @@
     #live-board-scroll .board li { font-size: 14px; }
     #live-board-scroll .board-empty { font-size: 13px; }
 
+    .ops-rank {
+      font-weight: 900;
+      min-width: 1.6em;
+      color: #2d5016;
+    }
+
     .pill {
       background: rgba(255,255,255,0.92);
       border: 2px solid rgba(0,0,0,0.15);
@@ -1239,8 +1245,9 @@
         el.innerHTML = '<p class="board-empty">No scores on the board.</p>';
         return;
       }
-      el.innerHTML = rows.map((row) => `
+      el.innerHTML = rows.map((row, index) => `
         <div class="ops-row">
+          <span class="ops-rank">${index + 1}</span>
           <span><b>${escapeHtml(row.name)}</b> · ${escapeHtml((DIFFICULTY_PRESETS[row.difficulty] || {}).label || row.difficulty)} · ${row.shown}</span>
           <input type="number" min="1" step="1" value="10" aria-label="Points to dock from ${escapeHtml(row.name)}" />
           <button type="button" data-dock data-name="${escapeHtml(row.name)}" data-diff="${escapeHtml(row.difficulty)}">Dock</button>
