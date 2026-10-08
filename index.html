@@ -112,6 +112,18 @@
       padding: 8px;
       font-family: inherit;
     }
+    .api-gets {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #173014;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      flex-shrink: 0;
+    }
+    .api-gets input { width: 16px; height: 16px; }
 
     #live-board-panel .you-are {
       padding: 10px 12px;
@@ -478,6 +490,7 @@
     <div id="play-row">
       <aside id="api-log-panel" class="side-panel" aria-label="Storage API call log">
         <h2>Storage API log<span class="panel-sub">Live Zapier requests</span></h2>
+        <label class="api-gets"><input id="show-gets" type="checkbox" /> show GETs?</label>
         <div id="api-log-list"><p class="api-empty">Waiting for board calls…</p></div>
       </aside>
 
@@ -573,6 +586,7 @@
     const hudScore = document.getElementById('hud-score');
     const hudStreak = document.getElementById('hud-streak');
     const apiLogList = document.getElementById('api-log-list');
+    const showGetsBox = document.getElementById('show-gets');
     const hudLives = document.getElementById('hud-lives');
     const hudTreat = document.getElementById('hud-treat');
     const hudTreatIcon = document.getElementById('hud-treat-icon');
@@ -984,6 +998,7 @@
     }
 
     function pushApiLog(entry) {
+      if (entry.method === 'GET' && !(showGetsBox && showGetsBox.checked)) return;
       apiLogEntries.unshift(entry);
       if (apiLogEntries.length > API_LOG_MAX) apiLogEntries.length = API_LOG_MAX;
       renderApiLog();
@@ -2007,6 +2022,7 @@
       opsClear.disabled = false;
       if (!ok) showToast('Could not clear the board.', 1400);
     });
+    if (showGetsBox) showGetsBox.addEventListener('change', renderApiLog);
     if (opsClose) opsClose.addEventListener('click', closeOps);
     if (new URLSearchParams(location.search).get('panel') === '1' || location.hash === '#panel') openOps();
     window.setInterval(() => {
