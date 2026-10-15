@@ -317,7 +317,7 @@
       background: rgba(255,255,255,0.98);
       color: #173014;
       cursor: pointer;
-      max-width: 160px;
+      max-width: 200px;
     }
     .card .difficulty-row {
       display: flex;
@@ -484,6 +484,7 @@
           <option value="medium">Medium</option>
           <option value="hard">Hard</option>
           <option value="extreme">Extreme</option>
+          <option value="annohalation">anNOAHlation</option>
         </select>
       </div>
       <div class="pill">
@@ -526,6 +527,7 @@
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
                 <option value="extreme">Extreme</option>
+                <option value="annohalation">anNOAHlation</option>
               </select>
             </div>
             <div class="btn-row">
@@ -795,13 +797,27 @@
         spawnFloor: 0.26,
         rampFloor: 6,
         earlyLevelSkew: 20,
+        extraRampMult: 0.88,
+      },
+      annohalation: {
+        label: 'anNOAHlation',
+        intervalMult: 0.44,
+        speedMult: 1.85,
+        treatMult: 0.5,
+        streakTreatMult: 0.52,
+        rampMult: 0.4,
+        shotMult: 0.76,
+        spawnFloor: 0.2,
+        rampFloor: 5,
+        earlyLevelSkew: 36,
+        extraRampMult: 0.72,
       },
     };
 
     function getLevelRuntimeConfig(levelIndex) {
       let baseIdx = levelIndex;
       const d = DIFFICULTY_PRESETS[state.difficulty] || DIFFICULTY_PRESETS.easy;
-      if (state.difficulty === 'extreme' && typeof d.earlyLevelSkew === 'number' && d.earlyLevelSkew > 0) {
+      if (typeof d.earlyLevelSkew === 'number' && d.earlyLevelSkew > 0) {
         const denom = Math.max(1, TOTAL_LEVELS - 1);
         const through = levelIndex / denom;
         const skew = Math.round((1 - through) * d.earlyLevelSkew);
@@ -823,7 +839,7 @@
         treatStreakBonus: Math.max(0.12, Math.round(base.treatStreakBonus * d.streakTreatMult * 100) / 100),
         rampSeconds: Math.max(
           rampFloor,
-          Math.round(base.rampSeconds * d.rampMult * (state.difficulty === 'extreme' ? 0.88 : 1)),
+          Math.round(base.rampSeconds * d.rampMult * (d.extraRampMult ?? 1)),
         ),
       };
     }
