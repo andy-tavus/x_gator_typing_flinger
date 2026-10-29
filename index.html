@@ -820,11 +820,13 @@
         treatMult: 0.5,
         streakTreatMult: 0.52,
         rampMult: 0.4,
-        shotMult: 0.76,
+        shotMult: 1.0,
         spawnFloor: 0.2,
         rampFloor: 5,
         earlyLevelSkew: 36,
         extraRampMult: 0.72,
+        flingBuffer: 10,
+        flingPerEnemy: 2,
       },
     };
 
@@ -1427,8 +1429,10 @@
     }
 
     function getAvailableFlings() {
-      // Flings available = enemies spawned - flings used + 4 buffer
-      return Math.max(0, state.enemiesSpawned - state.flingsUsed + 4);
+      const d = DIFFICULTY_PRESETS[state.difficulty] || DIFFICULTY_PRESETS.easy;
+      const buffer = d.flingBuffer ?? 4;
+      const per = d.flingPerEnemy ?? 1;
+      return Math.max(0, Math.floor(state.enemiesSpawned * per) - state.flingsUsed + buffer);
     }
 
     function shoot() {
@@ -1727,8 +1731,9 @@
               state.cake = Math.min(100, state.cake + treatGain);
             }
           } else {
-            // Enemy already gone (reached gator) - shot missed
+            // Enemy already gone (reached gator) - shot missed, give the water back
             s.hasHit = true;
+            state.flingsUsed = Math.max(0, state.flingsUsed - 1);
           }
         }
         
